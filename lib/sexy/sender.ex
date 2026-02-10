@@ -29,7 +29,7 @@ defmodule Sexy.Sender do
 
     {parse, text} =
       if object.entity == [],
-        do: {"HTML", Utils.Bot.wrap_text(object.text)},
+        do: {"HTML", object.text},
         else: {"", object.text}
 
     message =
@@ -93,6 +93,6 @@ defmodule Sexy.Sender do
   end
 
   defp session_module do
-    Application.get_env(:sexy, :session_module)
+    :persistent_term.get({Sexy, :session})
   end
 end

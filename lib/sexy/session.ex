@@ -1,10 +1,11 @@
 defmodule Sexy.Session do
   @moduledoc """
-  Behaviour for bridging Sexy library with the consuming app's persistence layer.
+  Behaviour for bridging Sexy library with the consuming app.
 
-  The app implements this to tell the library how to read/write message state
-  without the library knowing anything about the app's schema or field names.
+  Implements persistence (message state) and dispatch (update handlers).
   """
+
+  # ── Persistence ──────────────────────────────────────────────
 
   @doc "Return the current active message_id for this chat, or nil."
   @callback get_message_id(chat_id :: integer()) :: integer() | nil
@@ -23,4 +24,14 @@ defmodule Sexy.Session do
               type :: String.t(),
               extra :: map()
             ) :: any()
+
+  # ── Dispatch ─────────────────────────────────────────────────
+
+  @callback handle_command(update :: map()) :: any()
+  @callback handle_query(update :: map()) :: any()
+  @callback handle_message(update :: map()) :: any()
+  @callback handle_chat_member(update :: map()) :: any()
+  @callback handle_poll(update :: map()) :: any()
+
+  @optional_callbacks [handle_poll: 1]
 end

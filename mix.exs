@@ -4,7 +4,7 @@ defmodule Sexy.MixProject do
   def project do
     [
       app: :sexy,
-      version: "0.1.0",
+      version: "0.8.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -14,8 +14,7 @@ defmodule Sexy.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
-      mod: {Sexy.Application, []}
+      extra_applications: [:logger]
     ]
   end
 

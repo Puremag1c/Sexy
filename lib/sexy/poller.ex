@@ -93,39 +93,12 @@ defmodule Sexy.Poller do
   end
 
 
-  def apply_command(u) do
-    app_name = Application.get_application(__MODULE__)
-    module = Application.get_env(app_name, :handler_module)
-    func = Application.get_env(app_name, :command_handler)
-    apply(module, func, [u])
-  end
+  defp session, do: :persistent_term.get({Sexy, :session})
 
-  def apply_message(u) do
-    app_name = Application.get_application(__MODULE__)
-    module = Application.get_env(app_name, :handler_module)
-    func = Application.get_env(app_name, :message_handler)
-    apply(module, func, [u])
-  end
-
-  def apply_query(u) do
-    app_name = Application.get_application(__MODULE__)
-    module = Application.get_env(app_name, :handler_module)
-    func = Application.get_env(app_name, :query_handler)
-    apply(module, func, [u])
-  end
-
-  def apply_poll(u) do
-    app_name = Application.get_application(__MODULE__)
-    module = Application.get_env(app_name, :handler_module)
-    func = Application.get_env(app_name, :poll_handler)
-    apply(module, func, [u])
-  end
-
-  def apply_chat_member(u) do
-    app_name = Application.get_application(__MODULE__)
-    module = Application.get_env(app_name, :handler_module)
-    func = Application.get_env(app_name, :chat_member_handler)
-    apply(module, func, [u])
-  end
+  def apply_command(u), do: session().handle_command(u)
+  def apply_message(u), do: session().handle_message(u)
+  def apply_query(u), do: session().handle_query(u)
+  def apply_poll(u), do: session().handle_poll(u)
+  def apply_chat_member(u), do: session().handle_chat_member(u)
 
 end

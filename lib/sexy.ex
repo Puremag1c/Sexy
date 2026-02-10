@@ -1,11 +1,38 @@
 defmodule Sexy do
   @moduledoc """
-  Sexy - Telegram Bot framework for Elixir.
+  Sexy - Single-message Telegram Bot framework for Elixir.
 
-  Public API delegated to Sexy.Api.
+  Start as a child of your application supervisor:
+
+      {Sexy, token: "BOT_TOKEN", session: MyApp.TelegramSession}
+
+  Public API: build/1, send/1-2, notify/2-3, plus Telegram API delegates.
   """
 
-  # ── Telegram API ────────────────────────────────────────────────
+  use Supervisor
+  import Kernel, except: [send: 2]
+
+  def start_link(opts) do
+    token = Keyword.fetch!(opts, :token)
+    session = Keyword.fetch!(opts, :session)
+    :persistent_term.put({Sexy, :api_url}, "https://api.telegram.org/bot#{token}")
+    :persistent_term.put({Sexy, :session}, session)
+    Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @impl true
+  def init(_opts) do
+    children = [Sexy.Poller]
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  # ── Core API ──────────────────────────────────────────────────
+
+  def build(map), do: Sexy.Screen.build(map)
+  def send(object, opts \\ []), do: Sexy.Sender.deliver(object, opts)
+  def notify(chat_id, msg, opts \\ []), do: Sexy.Notification.notify(chat_id, msg, opts)
+
+  # ── Telegram API ──────────────────────────────────────────────
 
   defdelegate get_updates(offset), to: Sexy.Api
   defdelegate send_message(chat_id, text), to: Sexy.Api

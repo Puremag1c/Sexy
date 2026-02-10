@@ -10,7 +10,7 @@ defmodule Sexy.Api do
   # ── Internal HTTP ──────────────────────────────────────────────
 
   defp api_url do
-    Application.get_env(:sexy, :link) <> Application.get_env(:sexy, :token)
+    :persistent_term.get({Sexy, :api_url})
   end
 
   defp do_request(method, body, opts \\ []) do

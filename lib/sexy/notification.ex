@@ -84,7 +84,5 @@ defmodule Sexy.Notification do
     |> Api.edit_reply_markup()
   end
 
-  defp default_dismiss_text do
-    Application.get_env(:sexy, :dismiss_text, "OK")
-  end
+  defp default_dismiss_text, do: "OK"
 end
