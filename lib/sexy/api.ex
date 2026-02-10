@@ -13,10 +13,6 @@ defmodule Sexy.Api do
     Application.get_env(:sexy, :link) <> Application.get_env(:sexy, :token)
   end
 
-  defp api_url(token) do
-    Application.get_env(:sexy, :link) <> token
-  end
-
   defp do_request(method, body, opts \\ []) do
     url = api_url() <> "/" <> method
     timeout = Keyword.get(opts, :timeout, 5_000)
