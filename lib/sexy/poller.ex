@@ -66,8 +66,15 @@ defmodule Sexy.Poller do
       else: Task.start(fn -> apply_message(u) end)
   end
 
-  defp match_update(%{callback_query: _message} = u),
-    do: Task.start(fn -> apply_query(u) end)
+  defp match_update(%{callback_query: query} = u) do
+    case Sexy.Utils.Bot.get_command_name(query.data) do
+      "_delete" ->
+        Task.start(fn -> handle_builtin_delete(query) end)
+
+      _ ->
+        Task.start(fn -> apply_query(u) end)
+    end
+  end
 
   defp match_update(%{poll: _poll} = u),
     do: Task.start(fn -> apply_poll(u) end)
@@ -77,6 +84,13 @@ defmodule Sexy.Poller do
 
   defp match_update(u),
     do: Logger.warning("Unknown update in poller\n\n#{inspect(u, pretty: true)}")
+
+  defp handle_builtin_delete(query) do
+    params = Sexy.Utils.get_query(query.data)
+    chat_id = query.message.chat.id
+    Sexy.Api.delete_message(chat_id, params.mid)
+    Sexy.Api.answer_callback(query.id, "", false)
+  end
 
 
   def apply_command(u) do
