@@ -33,5 +33,17 @@ defmodule Sexy.Session do
   @callback handle_chat_member(update :: map()) :: any()
   @callback handle_poll(update :: map()) :: any()
 
-  @optional_callbacks [handle_poll: 1]
+  @doc """
+  Called when user clicks a transit button (built-in /_transit route).
+
+  Sexy deletes the notification and answers the callback automatically.
+  The app just needs to render the target screen.
+
+  - `chat_id` — Telegram chat id
+  - `command` — target command name (e.g. "order", "wallet")
+  - `query` — parsed query params as atom-keyed map
+  """
+  @callback handle_transit(chat_id :: integer(), command :: String.t(), query :: map()) :: any()
+
+  @optional_callbacks [handle_poll: 1, handle_transit: 3]
 end

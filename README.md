@@ -89,7 +89,15 @@ defmodule MyApp.TelegramSession do
   @impl true
   def handle_chat_member(update), do: MyApp.Bot.handle_chat_member(update)
 
-  # handle_poll/1 is optional
+  # ── Transit (optional) ──
+
+  @impl true
+  def handle_transit(chat_id, command, query) do
+    user = MyApp.Users.get_by_tid(chat_id)
+    MyApp.Bot.handle_query({command, query}, user)
+  end
+
+  # handle_poll/1 is also optional
 end
 ```
 
@@ -108,7 +116,7 @@ object |> Sexy.send(update_mid: false)  # don't touch current screen
 # Send notification with dismiss/navigate buttons
 Sexy.notify(chat_id, %{text: "Order accepted!"})
 Sexy.notify(chat_id, %{text: "New order!"},
-  navigate: {"View", fn mid -> "/transit mid=#{mid}-cmd=order" end},
+  navigate: {"View", "/order"},
   replace: true
 )
 ```
@@ -172,9 +180,9 @@ Sexy.notify(chat_id, %{text: "Done!"})
 # Replace — becomes new current screen
 Sexy.notify(chat_id, %{text: "Payment received!"}, replace: true)
 
-# With navigation
+# With transit — clicks deletes notification, calls Session.handle_transit
 Sexy.notify(chat_id, %{text: "New order!"},
-  navigate: {"View Order", fn mid -> "/transit mid=#{mid}-cmd=order-id=123" end}
+  navigate: {"View Order", "/order id=123"}
 )
 
 # Extra buttons
@@ -186,7 +194,7 @@ Sexy.notify(chat_id, %{text: "Error!"},
 | Option | Default | Description |
 |--------|---------|-------------|
 | `replace` | `false` | `false` = overlay with dismiss, `true` = replace screen |
-| `navigate` | `nil` | `{"Text", "/callback"}` or `{"Text", fn mid -> "..." end}` |
+| `navigate` | `nil` | `{"Text", "/command query"}` — auto-transit via `/_transit` |
 | `extra_buttons` | `[]` | Additional button rows |
 | `dismiss_text` | `"OK"` | Custom dismiss button text |
 
@@ -244,7 +252,7 @@ Sexy                    Supervisor + public API facade
 Sexy.Api                Telegram HTTP methods
 Sexy.Sender             Object -> Telegram + mid lifecycle
 Sexy.Screen             Map -> Object struct
-Sexy.Session            Behaviour: persistence + dispatch
+Sexy.Session            Behaviour: persistence + dispatch + transit
 Sexy.Notification       Overlay/replace notifications
 Sexy.Poller             GenServer polling + dispatch
 Sexy.Utils              Query parsing, formatting, UUID

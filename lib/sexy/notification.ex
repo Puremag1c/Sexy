@@ -16,8 +16,8 @@ defmodule Sexy.Notification do
   `message` is a map like `%{text: "..."}` or `%{media: "file", file: "...", filename: "..."}`.
 
   Options:
-    - `navigate: {"Button Text", "/command query"}` — static navigation button
-    - `navigate: {"Button Text", fn mid -> "/transit mid=\#{mid}-cmd=..." end}` — dynamic callback with mid
+    - `navigate: {"Button Text", "/command query"}` — transit button (auto-wraps to /_transit)
+    - `navigate: {"Button Text", fn mid -> "..." end}` — custom callback with mid injection
     - `replace: false` (default) — overlay mode, dismissable
     - `replace: true` — replaces current screen, no dismiss
     - `extra_buttons: [[%{text: ..., ...}]]` — extra button rows appended after navigate/dismiss
@@ -57,8 +57,8 @@ defmodule Sexy.Notification do
         {text, callback_fn} when is_function(callback_fn) ->
           [[%{text: text, callback_data: callback_fn.(mid)}]]
 
-        {text, callback} when is_binary(callback) ->
-          [[%{text: text, callback_data: callback}]]
+        {text, path} when is_binary(path) ->
+          [[%{text: text, callback_data: transit_callback(mid, path)}]]
 
         nil ->
           []
@@ -82,6 +82,18 @@ defmodule Sexy.Notification do
     }
     |> Jason.encode!()
     |> Api.edit_reply_markup()
+  end
+
+  defp transit_callback(mid, path) do
+    trimmed = String.trim_leading(path, "/")
+
+    {cmd, query_part} =
+      case String.split(trimmed, " ", parts: 2) do
+        [cmd, query] when query != "" -> {cmd, "-" <> query}
+        [cmd | _] -> {cmd, ""}
+      end
+
+    "/_transit mid=#{mid}-cmd=#{cmd}#{query_part}"
   end
 
   defp default_dismiss_text, do: "OK"

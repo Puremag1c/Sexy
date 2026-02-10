@@ -71,6 +71,9 @@ defmodule Sexy.Poller do
       "_delete" ->
         Task.start(fn -> handle_builtin_delete(query) end)
 
+      "_transit" ->
+        Task.start(fn -> handle_builtin_transit(query) end)
+
       _ ->
         Task.start(fn -> apply_query(u) end)
     end
@@ -90,6 +93,14 @@ defmodule Sexy.Poller do
     chat_id = query.message.chat.id
     Sexy.Api.delete_message(chat_id, params.mid)
     Sexy.Api.answer_callback(query.id, "", false)
+  end
+
+  defp handle_builtin_transit(query) do
+    params = Sexy.Utils.get_query(query.data)
+    chat_id = query.message.chat.id
+    Sexy.Api.delete_message(chat_id, params.mid)
+    Sexy.Api.answer_callback(query.id, "", false)
+    session().handle_transit(chat_id, params.cmd, Map.drop(params, [:mid, :cmd]))
   end
 
 
