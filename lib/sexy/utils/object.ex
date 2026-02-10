@@ -1,5 +1,12 @@
 defmodule Sexy.Utils.Object do
-  defstruct text: "", media: nil, kb: %{inline_keyboard: []}, entity: [], user: nil, update_user: %{}, file: nil, filename: nil
+  defstruct chat_id: nil,
+            text: "",
+            media: nil,
+            kb: %{inline_keyboard: []},
+            entity: [],
+            update_data: %{},
+            file: nil,
+            filename: nil
 
   def detect_object_type(obj) do
     cond do
