@@ -199,6 +199,9 @@ end
 | `Sexy.strip(map)` | `Sexy.Utils.strip(map)` | |
 | `Sexy.setmenu()` | `Sexy.set_commands("cmd1 - Desc, cmd2 - Desc")` | Different format |
 | `Sexy.delmenu()` | `Sexy.delete_commands()` | |
+| `Sexy.pay(tid, inv, period, sum, title, desc)` | `Sexy.send_invoice(tid, title, desc, inv, "XTR", [%{label: period, amount: sum}])` | Stars payments |
+| `Sexy.payOk(id)` | `Sexy.answer_pre_checkout(id)` | |
+| `Sexy.refundStarPayment(tid, charge_id)` | `Sexy.refund_star_payment(tid, charge_id)` | |
 
 ### Phase 5: Replace notifications
 
@@ -346,7 +349,7 @@ sendmessage(user, obj)  # manually saves obj.state
 These Telegram payment events are NOT routed through Session callbacks. You'll need to keep handling them in `handle_message` or `handle_query`, or add custom routing in your dispatch.
 
 Check if your Penetration module handles:
-- `pre_checkout_query` → call `Sexy.request(Jason.encode!(%{pre_checkout_query_id: id, ok: true}), "answerPreCheckoutQuery")`
+- `pre_checkout_query` → call `Sexy.answer_pre_checkout(id)`
 - `successful_payment` → detect in `handle_message` via `Map.has_key?(u.message, :successful_payment)`
 
 ### 8. Concurrent message processing

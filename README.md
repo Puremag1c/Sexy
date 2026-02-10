@@ -227,6 +227,9 @@ Sexy.get_chat_member(chat_id, user_id)
 Sexy.get_user_photo(user_id)
 Sexy.set_commands("start - Start bot, help - Get help")
 Sexy.delete_commands()
+Sexy.send_invoice(chat_id, "Title", "Desc", "payload_123", "XTR", [%{label: "30 days", amount: 100}])
+Sexy.answer_pre_checkout(pre_checkout_query_id)
+Sexy.refund_star_payment(user_id, telegram_payment_charge_id)
 Sexy.request(json_body, "anyMethod")
 ```
 

@@ -222,6 +222,29 @@ defmodule Sexy.Api do
 
   # ── Payments ───────────────────────────────────────────────────
 
+  def send_invoice(chat_id, title, description, payload, currency, prices) do
+    Jason.encode!(%{
+      chat_id: chat_id,
+      title: title,
+      description: description,
+      payload: payload,
+      provider_token: "",
+      currency: currency,
+      prices: prices
+    })
+    |> then(&do_request("sendInvoice", &1))
+  end
+
+  def answer_pre_checkout(pre_checkout_query_id) do
+    Jason.encode!(%{pre_checkout_query_id: pre_checkout_query_id, ok: true})
+    |> then(&do_request("answerPreCheckoutQuery", &1))
+  end
+
+  def refund_star_payment(user_id, telegram_payment_charge_id) do
+    Jason.encode!(%{user_id: user_id, telegram_payment_charge_id: telegram_payment_charge_id})
+    |> then(&do_request("refundStarPayment", &1))
+  end
+
   def wallet_init(currency, amount, external_id, description, telegram_user_id) do
     wallet_key = System.get_env("WALLET")
 

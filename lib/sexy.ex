@@ -59,5 +59,8 @@ defmodule Sexy do
   defdelegate forward_message(body), to: Sexy.Api
   defdelegate copy_message(chat_id, from_chat_id, message_id), to: Sexy.Api
   defdelegate request(body, method), to: Sexy.Api
+  defdelegate send_invoice(chat_id, title, description, payload, currency, prices), to: Sexy.Api
+  defdelegate answer_pre_checkout(pre_checkout_query_id), to: Sexy.Api
+  defdelegate refund_star_payment(user_id, charge_id), to: Sexy.Api
   defdelegate wallet_init(cur, sum, id, info, user), to: Sexy.Api
 end
