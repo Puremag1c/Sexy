@@ -16,7 +16,7 @@ defmodule Sexy.Poller do
 
   def handle_cast(:update, offset) do
     new_offset =
-      Sexy.gogo(offset)
+      Sexy.Api.get_updates(offset)
       |> process_messages
 
     {:noreply, new_offset + 1, 100}
