@@ -1,29 +1,30 @@
 <p align="center">
   <img src="https://img.shields.io/badge/elixir-%3E%3D%201.14-blueviolet?style=flat-square" />
-  <img src="https://img.shields.io/badge/telegram-bot%20api-26A5E4?style=flat-square&logo=telegram&logoColor=white" />
+  <img src="https://img.shields.io/badge/telegram-bot%20api%20%2B%20tdlib-26A5E4?style=flat-square&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
 </p>
 
 <h1 align="center">Sexy</h1>
 
 <p align="center">
-  <b>Single-message Telegram Bot framework for Elixir</b><br/>
-  <sub>Two params to start. One behaviour to implement. Zero config keys.</sub>
+  <b>Telegram framework for Elixir — bots and userbots from one dependency</b><br/>
+  <sub>Sexy.Bot for Bot API. Sexy.TDL for TDLib. Use one or both.</sub>
 </p>
 
 ---
 
-## Philosophy
+## What is Sexy?
 
-Most Telegram bots flood the chat with messages. Sexy takes a different approach: **one active message per user**. Every new screen replaces the previous one, creating a clean, app-like experience inside Telegram.
+Sexy is a Telegram framework with two engines:
 
-```
-User clicks button  ->  old message deleted  ->  new message sent  ->  state saved
-```
+- **Sexy.Bot** — Bot API with a single-message UI pattern. Every screen replaces the previous one, creating an app-like experience inside Telegram.
+- **Sexy.TDL** — TDLib integration for userbot sessions. Manages port to `tdlib_json_cli`, deserializes JSON into Elixir structs, routes events to your app.
+
+Both can run in the same application simultaneously.
 
 ---
 
-## Quick Start
+## Quick Start: Bot API
 
 ### 1. Add dependency
 
@@ -37,233 +38,271 @@ end
 ### 2. Start in your supervision tree
 
 ```elixir
-# lib/my_app/application.ex
 children = [
-  # ...
-  {Sexy, token: Application.get_env(:sexy, :token), session: MyApp.TelegramSession},
+  {Sexy.Bot, token: "123456:ABC-DEF...", session: MyApp.Session},
 ]
 ```
 
-```elixir
-# config/dev.local.exs (not in git!)
-config :sexy, token: "123456:ABC-DEF..."
-```
-
-That's it. Two params: `token` and `session`.
-
 ### 3. Implement Session
 
-The Session behaviour is the **only** integration point. It handles both persistence (message state) and dispatch (update routing).
-
 ```elixir
-defmodule MyApp.TelegramSession do
-  @behaviour Sexy.Session
+defmodule MyApp.Session do
+  @behaviour Sexy.Bot.Session
 
-  # ── Persistence ──
-
+  # Persistence — Sexy manages one active message per chat
   @impl true
-  def get_message_id(chat_id) do
-    case MyApp.Users.get_by_tid(chat_id) do
-      nil -> nil
-      user -> user.last_message_id
-    end
-  end
+  def get_message_id(chat_id), do: MyApp.Users.get_mid(chat_id)
 
   @impl true
   def on_message_sent(chat_id, message_id, type, extra) do
-    user = MyApp.Users.get_by_tid(chat_id)
-    MyApp.Users.update(user, Map.merge(extra, %{last_message_id: message_id, message_type: type}))
+    MyApp.Users.save_mid(chat_id, message_id, type, extra)
   end
 
-  # ── Dispatch ──
+  # Dispatch — Sexy routes updates to these callbacks
+  @impl true
+  def handle_command(update), do: MyApp.Bot.command(update)
 
   @impl true
-  def handle_command(update), do: MyApp.Bot.handle_command(update)
+  def handle_query(update), do: MyApp.Bot.query(update)
 
   @impl true
-  def handle_query(update), do: MyApp.Bot.handle_query(update)
+  def handle_message(update), do: MyApp.Bot.message(update)
 
   @impl true
-  def handle_message(update), do: MyApp.Bot.handle_message(update)
-
-  @impl true
-  def handle_chat_member(update), do: MyApp.Bot.handle_chat_member(update)
-
-  # ── Transit (optional) ──
-
-  @impl true
-  def handle_transit(chat_id, command, query) do
-    user = MyApp.Users.get_by_tid(chat_id)
-    MyApp.Bot.handle_query({command, query}, user)
-  end
-
-  # handle_poll/1 is also optional
+  def handle_chat_member(update), do: :ok
 end
 ```
 
----
-
-## Core API
+### 4. Build and send screens
 
 ```elixir
-# Build Object struct from map
-Sexy.build(%{chat_id: 123, text: "Hello", kb: %{inline_keyboard: []}})
+%{
+  chat_id: chat_id,
+  text: "Welcome!",
+  kb: %{inline_keyboard: [[%{text: "Start", callback_data: "/start"}]]}
+}
+|> Sexy.Bot.build()
+|> Sexy.Bot.send()
+```
 
-# Send Object to Telegram (manages single-message lifecycle)
-object |> Sexy.send()
-object |> Sexy.send(update_mid: false)  # don't touch current screen
+That's it. Sexy deletes the old message, sends the new one, and saves state via your Session.
 
-# Send notification with dismiss/navigate buttons
-Sexy.notify(chat_id, %{text: "Order accepted!"})
-Sexy.notify(chat_id, %{text: "New order!"},
-  navigate: {"View", "/order"},
-  replace: true
-)
+---
+
+## Quick Start: TDLib (Userbots)
+
+### 1. Configure
+
+```elixir
+# config/config.exs
+config :sexy,
+  tdlib_binary: "/path/to/tdlib_json_cli",
+  tdlib_data_root: "/path/to/tdlib_data"
+```
+
+Or run the interactive setup: `mix sexy.tdl.setup`
+
+### 2. Add to supervision tree
+
+```elixir
+children = [
+  Sexy.TDL,
+  # optionally alongside Sexy.Bot:
+  {Sexy.Bot, token: "...", session: MyApp.Session},
+]
+```
+
+### 3. Open a session
+
+```elixir
+config = %{Sexy.TDL.default_config() |
+  api_id: "12345",
+  api_hash: "abc123",
+  database_directory: "/tmp/tdlib_data/my_account"
+}
+
+Sexy.TDL.open("my_account", config, app_pid: self())
+```
+
+### 4. Handle events
+
+```elixir
+def handle_info({:recv, struct}, state) do
+  # TDLib object as Elixir struct (e.g. %Sexy.TDL.Object.UpdateNewMessage{})
+end
+
+def handle_info({:proxy_event, text}, state) do
+  # proxychains output
+end
+
+def handle_info({:system_event, type, details}, state) do
+  # :port_failed, :port_exited, :proxy_conf_missing
+end
+```
+
+### 5. Send commands
+
+```elixir
+Sexy.TDL.transmit("my_account", %Sexy.TDL.Method.GetMe{})
+Sexy.TDL.transmit("my_account", %Sexy.TDL.Method.SendMessage{
+  chat_id: 123456,
+  input_message_content: %Sexy.TDL.Object.InputMessageText{
+    text: %Sexy.TDL.Object.FormattedText{text: "Hello from userbot!"}
+  }
+})
 ```
 
 ---
 
-## Architecture
+## Concepts
+
+### Single-message pattern (Bot)
 
 ```
-                    YOUR APP
-        ┌──────────────────────────┐
-        │  Menu / Screen modules   │  <- return plain maps
-        │  (%{text, kb, user...})  │
-        └───────────┬──────────────┘
-                    │
-               to_object()           <- app extracts chat_id, renames fields
-                    │
-        ┌───────────▼──────────────┐
-        │      Sexy.build()        │  <- map -> Object struct
-        └───────────┬──────────────┘
-                    │
-        ┌───────────▼──────────────┐
-        │      Sexy.send()         │  <- detect type, send, manage mid
-        │                          │
-        │  ┌─────────────────────┐ │
-        │  │   Sexy.Session      │ │  <- get_message_id / on_message_sent
-        │  │   (your impl)       │ │     + handle_command/query/message/...
-        │  └─────────────────────┘ │
-        └───────────┬──────────────┘
-                    │
-        ┌───────────▼──────────────┐
-        │      Sexy.Api            │  <- HTTP to Telegram
-        └──────────────────────────┘
+User clicks button  ->  old message deleted  ->  new message sent  ->  state saved
 ```
 
----
+Every chat has one active screen. `Sexy.Bot.send/1` handles the full cycle: detect content type, call Telegram API, delete previous message via `Session.get_message_id/1`, save new mid via `Session.on_message_sent/4`.
 
-## Object
+### Object struct
 
-The universal message struct:
+The universal message container:
 
 ```elixir
 %Sexy.Utils.Object{
-  chat_id: 123456789,
+  chat_id: 123,
   text: "Hello!",
-  media: nil,           # nil = text, "A..." = photo, "B..." = video, "C..." = animation
-  kb: %{inline_keyboard: [[%{text: "Click", callback_data: "/action"}]]},
-  entity: [],           # Telegram entities
-  update_data: %{},     # pass-through to on_message_sent
+  media: nil,           # nil=text, "A..."=photo, "B..."=video, "C..."=animation
+  kb: %{inline_keyboard: [[%{text: "Click", callback_data: "/go"}]]},
+  entity: [],           # Telegram entities (bold, links, etc.)
+  update_data: %{},     # passed to on_message_sent as extra
   file: nil,            # for document uploads
   filename: nil
 }
 ```
 
-## Notification
+### Notifications (Bot)
 
 ```elixir
 # Overlay — dismiss button, current screen untouched
-Sexy.notify(chat_id, %{text: "Done!"})
+Sexy.Bot.notify(chat_id, %{text: "Done!"})
 
-# Replace — becomes new current screen
-Sexy.notify(chat_id, %{text: "Payment received!"}, replace: true)
+# Replace — becomes new active screen
+Sexy.Bot.notify(chat_id, %{text: "Payment received!"}, replace: true)
 
-# With transit — clicks deletes notification, calls Session.handle_transit
-Sexy.notify(chat_id, %{text: "New order!"},
+# Navigate — click deletes notification, calls Session.handle_transit/3
+Sexy.Bot.notify(chat_id, %{text: "New order!"},
   navigate: {"View Order", "/order id=123"}
 )
-
-# Extra buttons
-Sexy.notify(chat_id, %{text: "Error!"},
-  extra_buttons: [[%{text: "Support", url: "tg://user?id=123"}]]
-)
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `replace` | `false` | `false` = overlay with dismiss, `true` = replace screen |
-| `navigate` | `nil` | `{"Text", "/command query"}` — auto-transit via `/_transit` |
-| `extra_buttons` | `[]` | Additional button rows |
-| `dismiss_text` | `"OK"` | Custom dismiss button text |
+### TDL supervision tree
+
+```
+Sexy.TDL (Supervisor)
+  |-- Sexy.TDL.Registry (ETS session storage)
+  |-- AccountVisor (DynamicSupervisor)
+        |-- Riser per session (one_for_all)
+              |-- Backend (port to tdlib_json_cli)
+              |-- Handler (JSON -> structs -> events)
+              |-- ...extra children from your app
+```
+
+Open a session with `Sexy.TDL.open/3`, close with `Sexy.TDL.close/1`. Each session gets its own supervision subtree. Pass `children: [MyWorker]` in opts to inject app-specific processes.
+
+### Auto-generated types
+
+Sexy ships 2558 structs generated from TDLib API documentation:
+
+- `Sexy.TDL.Method.*` — 786 API methods (GetMe, SendMessage, etc.)
+- `Sexy.TDL.Object.*` — 1772 response types (UpdateNewMessage, User, Chat, etc.)
+
+Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to/types.json`
 
 ---
 
-## Telegram API
+## API Reference
 
-All methods available via `Sexy.method()` or `Sexy.Api.method()`:
+### Sexy.Bot
 
-```elixir
-Sexy.send_message(chat_id, "Hello!")
-Sexy.send_message(json_body)
-Sexy.send_photo(json_body)
-Sexy.send_video(json_body)
-Sexy.send_animation(json_body)
-Sexy.send_document(chat_id, file, filename, caption, reply_markup_json)
-Sexy.send_poll(json_body)
-Sexy.send_dice(chat_id, type)
-Sexy.send_chat_action(chat_id, type)
-Sexy.forward_message(json_body)
-Sexy.copy_message(chat_id, from_chat_id, message_id)
-Sexy.edit_text(%{chat_id: id, message_id: mid, text: "Updated"})
-Sexy.edit_reply_markup(json_body)
-Sexy.edit_media(json_body)
-Sexy.delete_message(chat_id, message_id)
-Sexy.answer_callback(callback_id, "Text!", true)
-Sexy.get_me()
-Sexy.get_chat(chat_id)
-Sexy.get_chat_member(chat_id, user_id)
-Sexy.get_user_photo(user_id)
-Sexy.set_commands("start - Start bot, help - Get help")
-Sexy.delete_commands()
-Sexy.send_invoice(chat_id, "Title", "Desc", "payload_123", "XTR", [%{label: "30 days", amount: 100}])
-Sexy.answer_pre_checkout(pre_checkout_query_id)
-Sexy.refund_star_payment(user_id, telegram_payment_charge_id)
-Sexy.request(json_body, "anyMethod")
-```
+| Function | Description |
+|----------|-------------|
+| `build(map)` | Map -> Object struct |
+| `send(object, opts)` | Send to Telegram, manage mid lifecycle |
+| `notify(chat_id, msg, opts)` | Notification with dismiss/navigate |
+| `send_message(chat_id, text)` | Send text message |
+| `send_photo(body)` | Send photo |
+| `send_video(body)` | Send video |
+| `send_animation(body)` | Send animation |
+| `send_document(chat_id, file, name, text, kb)` | Send file |
+| `edit_text(body)` | Edit message text |
+| `edit_reply_markup(body)` | Edit buttons |
+| `delete_message(chat_id, mid)` | Delete message |
+| `answer_callback(id, text, alert)` | Answer callback query |
+| `send_invoice(chat_id, title, desc, payload, cur, prices)` | Telegram Stars payment |
+| `request(body, method)` | Any Telegram Bot API method |
 
----
+### Sexy.TDL
 
-## Utilities
+| Function | Description |
+|----------|-------------|
+| `open(session, config, opts)` | Start TDLib session |
+| `close(session)` | Stop session and cleanup |
+| `transmit(session, msg)` | Send command to TDLib |
+| `default_config()` | Base TDLib config template |
 
-```elixir
-Sexy.Utils.fiat_chunk(1_234_567, 2)           # => "1 234 567"
-Sexy.Utils.stringify_uuid(uuid)                # => "6ByM..."
-Sexy.Utils.normalize_uuid("6ByM...")           # => "550e8400-..."
-Sexy.Utils.strip(%{"key" => %{"nested" => 1}}) # => %{key: %{nested: 1}}
-Sexy.Utils.Bot.parse_comand_and_query("/order action=view-id=42")
-Sexy.Utils.Bot.paginate(list, page, size)
-```
+### Sexy.Bot.Session callbacks
+
+| Callback | Required | Description |
+|----------|----------|-------------|
+| `get_message_id(chat_id)` | yes | Return current active mid |
+| `on_message_sent(chat_id, mid, type, extra)` | yes | Save new active mid |
+| `handle_command(update)` | yes | `/command` messages |
+| `handle_query(update)` | yes | Button callbacks |
+| `handle_message(update)` | yes | Text messages |
+| `handle_chat_member(update)` | yes | Join/leave events |
+| `handle_poll(update)` | no | Poll responses |
+| `handle_transit(chat_id, cmd, query)` | no | Transit button clicks |
 
 ---
 
 ## Module Map
 
 ```
-Sexy                    Supervisor + public API facade
-Sexy.Api                Telegram HTTP methods
-Sexy.Sender             Object -> Telegram + mid lifecycle
-Sexy.Screen             Map -> Object struct
-Sexy.Session            Behaviour: persistence + dispatch + transit
-Sexy.Notification       Overlay/replace notifications
-Sexy.Poller             GenServer polling + dispatch
-Sexy.Utils              Query parsing, formatting, UUID
-Sexy.Utils.Bot          Command parsing, type detection
-Sexy.Utils.Object       Message struct + type detection
+Sexy                        Namespace module
+Sexy.Bot                    Bot API supervisor + public API
+Sexy.Bot.Api                Telegram HTTP client
+Sexy.Bot.Sender             Object -> Telegram + mid lifecycle
+Sexy.Bot.Screen             Map -> Object struct
+Sexy.Bot.Session            Behaviour: persistence + dispatch
+Sexy.Bot.Notification       Overlay/replace notifications
+Sexy.Bot.Poller             GenServer polling + routing
+Sexy.TDL                    TDLib supervisor + open/close/transmit API
+Sexy.TDL.Backend            Port to tdlib_json_cli binary
+Sexy.TDL.Handler            JSON deserialization + event routing
+Sexy.TDL.Registry           ETS session storage
+Sexy.TDL.Riser              Per-account supervisor
+Sexy.TDL.Object             1772 auto-generated TDLib object structs
+Sexy.TDL.Method             786 auto-generated TDLib method structs
+Sexy.Utils                  Query parsing, formatting, type conversion
+Sexy.Utils.Bot              Command parsing, pagination
+Sexy.Utils.Object           Message struct + type detection
 ```
 
 ---
+
+## Mix Tasks
+
+| Task | Description |
+|------|-------------|
+| `mix sexy.tdl.setup` | Interactive TDLib configuration wizard |
+| `mix sexy.tdl.generate_types [path]` | Regenerate Method/Object structs from types.json |
+
+---
+
+## Migration
+
+Upgrading from an older version? See [MIGRATION.md](MIGRATION.md).
 
 ## License
 
