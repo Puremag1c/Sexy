@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2
+
+- Flatten `lib/` structure: remove redundant `lib/sexy/` nesting
+
 ## 0.9.1
 
 - Move all Bot modules under `Sexy.Bot` namespace:
