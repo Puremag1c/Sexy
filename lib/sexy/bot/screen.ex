@@ -1,4 +1,4 @@
-defmodule Sexy.Screen do
+defmodule Sexy.Bot.Screen do
   @moduledoc """
   Converts app maps into Sexy.Utils.Object structs ready for sending.
   """

@@ -1,4 +1,4 @@
-defmodule Sexy.Poller do
+defmodule Sexy.Bot.Poller do
   use GenServer
   require Logger
 
@@ -16,7 +16,7 @@ defmodule Sexy.Poller do
 
   def handle_cast(:update, offset) do
     new_offset =
-      Sexy.Api.get_updates(offset)
+      Sexy.Bot.Api.get_updates(offset)
       |> process_messages
 
     {:noreply, new_offset + 1, 100}
@@ -91,15 +91,15 @@ defmodule Sexy.Poller do
   defp handle_builtin_delete(query) do
     params = Sexy.Utils.get_query(query.data)
     chat_id = query.message.chat.id
-    Sexy.Api.delete_message(chat_id, params.mid)
-    Sexy.Api.answer_callback(query.id, "", false)
+    Sexy.Bot.Api.delete_message(chat_id, params.mid)
+    Sexy.Bot.Api.answer_callback(query.id, "", false)
   end
 
   defp handle_builtin_transit(query) do
     params = Sexy.Utils.get_query(query.data)
     chat_id = query.message.chat.id
-    Sexy.Api.delete_message(chat_id, params.mid)
-    Sexy.Api.answer_callback(query.id, "", false)
+    Sexy.Bot.Api.delete_message(chat_id, params.mid)
+    Sexy.Bot.Api.answer_callback(query.id, "", false)
     session().handle_transit(chat_id, params.cmd, Map.drop(params, [:mid, :cmd]))
   end
 

@@ -1,4 +1,4 @@
-defmodule Sexy.Session do
+defmodule Sexy.Bot.Session do
   @moduledoc """
   Behaviour for bridging Sexy library with the consuming app.
 

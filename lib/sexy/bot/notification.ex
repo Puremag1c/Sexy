@@ -1,4 +1,4 @@
-defmodule Sexy.Notification do
+defmodule Sexy.Bot.Notification do
   @moduledoc """
   Send notification messages with dismiss/navigate buttons.
 
@@ -7,7 +7,7 @@ defmodule Sexy.Notification do
   - replace (replace: true) — replaces current screen, saves new mid, no dismiss button
   """
 
-  alias Sexy.{Api, Sender, Screen}
+  alias Sexy.Bot.{Api, Sender, Screen}
   require Logger
 
   @doc """
@@ -40,7 +40,7 @@ defmodule Sexy.Notification do
         edit_buttons(chat_id, mid, buttons)
 
       _ ->
-        Logger.warning("Sexy.Notification | send failed: #{inspect(response)}")
+        Logger.warning("Sexy.Bot.Notification | send failed: #{inspect(response)}")
     end
 
     response

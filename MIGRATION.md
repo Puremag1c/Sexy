@@ -430,6 +430,16 @@ Sexy.Bot.delete_message(chat_id, mid)
 
 This applies to all delegates: `send_photo`, `send_video`, `edit_text`, `answer_callback`, etc.
 
+## Step 2.5: Update Session Behaviour
+
+```elixir
+# Before (0.8):
+@behaviour Sexy.Session
+
+# After (0.9):
+@behaviour Sexy.Bot.Session
+```
+
 ## Step 3 (Optional): Add TDLib Support
 
 If you want to run userbot sessions via TDLib:
@@ -480,8 +490,9 @@ Sexy.TDL.transmit("my_session", %Sexy.TDL.Method.GetMe{})
 
 ```
 [ ] 1. {Sexy, ...} → {Sexy.Bot, ...} in Application children
-[ ] 2. Sexy.build/send/notify → Sexy.Bot.build/send/notify
-[ ] 3. All Sexy.* API calls → Sexy.Bot.* (send_message, delete_message, etc.)
-[ ] 4. mix compile --force (zero warnings)
-[ ] 5. Test: send command, receive screen, click button, notifications
+[ ] 2. @behaviour Sexy.Session → @behaviour Sexy.Bot.Session
+[ ] 3. Sexy.build/send/notify → Sexy.Bot.build/send/notify
+[ ] 4. All Sexy.* API calls → Sexy.Bot.* (send_message, delete_message, etc.)
+[ ] 5. mix compile --force (zero warnings)
+[ ] 6. Test: send command, receive screen, click button, notifications
 ```

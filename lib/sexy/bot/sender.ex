@@ -1,9 +1,10 @@
-defmodule Sexy.Sender do
+defmodule Sexy.Bot.Sender do
   @moduledoc """
   Sends Object to Telegram. Handles type detection, mid lifecycle, session updates.
   """
 
-  alias Sexy.{Api, Utils}
+  alias Sexy.Bot.Api
+  alias Sexy.Utils
   require Logger
 
   @doc """
@@ -20,7 +21,7 @@ defmodule Sexy.Sender do
   end
 
   def deliver(%{chat_id: nil} = item, _opts) do
-    Logger.warning("Sexy.Sender | chat_id is nil\n#{inspect(item, pretty: true)}")
+    Logger.warning("Sexy.Bot.Sender | chat_id is nil\n#{inspect(item, pretty: true)}")
   end
 
   def deliver(object, opts) do
@@ -85,7 +86,7 @@ defmodule Sexy.Sender do
         end
 
       error ->
-        Logger.error("Sexy.Sender | Failed to send message: #{error["description"]}")
+        Logger.error("Sexy.Bot.Sender | Failed to send message: #{error["description"]}")
         Logger.info(inspect(object, pretty: true))
     end
 

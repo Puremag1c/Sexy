@@ -1,4 +1,4 @@
-defmodule Sexy.Api do
+defmodule Sexy.Bot.Api do
   @moduledoc """
   Telegram Bot API client with readable method names.
   All methods use a single `do_request/3` internally.

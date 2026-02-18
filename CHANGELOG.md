@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1
+
+- Move all Bot modules under `Sexy.Bot` namespace:
+  - `Sexy.Api` → `Sexy.Bot.Api`
+  - `Sexy.Sender` → `Sexy.Bot.Sender`
+  - `Sexy.Notification` → `Sexy.Bot.Notification`
+  - `Sexy.Poller` → `Sexy.Bot.Poller`
+  - `Sexy.Screen` → `Sexy.Bot.Screen`
+  - `Sexy.Session` → `Sexy.Bot.Session`
+
 ## 0.9.0
 
 **Breaking**: `Sexy` split into `Sexy.Bot` + `Sexy.TDL`.
