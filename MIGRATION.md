@@ -381,3 +381,107 @@ Old Poller may use `Task.async_stream` with `maxconcurrency: 10`. New Sexy Polle
 [ ] 19. mix compile --force (zero warnings)
 [ ] 20. Test: send command, receive screen, click button, notifications
 ```
+
+---
+
+# Migrating to Sexy 0.9
+
+Guide for updating from Sexy 0.8 to 0.9. Main change: `Sexy` split into `Sexy.Bot` + `Sexy.TDL`.
+
+---
+
+## What Changed
+
+- `Sexy` is no longer a supervisor — it's just a namespace module
+- Bot API moved to `Sexy.Bot` (same API, new module name)
+- New `Sexy.TDL` module for TDLib userbot sessions
+
+## Step 1: Update Supervision Tree
+
+```elixir
+# Before (0.8):
+children = [
+  {Sexy, token: "BOT_TOKEN", session: MyApp.Session},
+]
+
+# After (0.9):
+children = [
+  {Sexy.Bot, token: "BOT_TOKEN", session: MyApp.Session},
+]
+```
+
+## Step 2: Update API Calls
+
+All public API moved from `Sexy` to `Sexy.Bot`:
+
+```elixir
+# Before (0.8):
+Sexy.build(map) |> Sexy.send()
+Sexy.notify(chat_id, msg)
+Sexy.send_message(chat_id, text)
+Sexy.delete_message(chat_id, mid)
+
+# After (0.9):
+Sexy.Bot.build(map) |> Sexy.Bot.send()
+Sexy.Bot.notify(chat_id, msg)
+Sexy.Bot.send_message(chat_id, text)
+Sexy.Bot.delete_message(chat_id, mid)
+```
+
+This applies to all delegates: `send_photo`, `send_video`, `edit_text`, `answer_callback`, etc.
+
+## Step 3 (Optional): Add TDLib Support
+
+If you want to run userbot sessions via TDLib:
+
+**3.1. Configure TDLib paths**
+```elixir
+# config/config.exs
+config :sexy,
+  tdlib_binary: "/path/to/tdlib_json_cli",
+  tdlib_data_root: "/path/to/tdlib_data"
+```
+
+**3.2. Add Sexy.TDL to supervision tree**
+```elixir
+children = [
+  {Sexy.Bot, token: "BOT_TOKEN", session: MyApp.Session},
+  Sexy.TDL,
+]
+```
+
+**3.3. Open a userbot session**
+```elixir
+config = %{Sexy.TDL.default_config() | api_id: "12345", api_hash: "abc123"}
+Sexy.TDL.open("my_session", config, app_pid: self())
+```
+
+**3.4. Handle incoming events**
+```elixir
+def handle_info({:recv, struct}, state) do
+  # TDLib object received
+end
+
+def handle_info({:proxy_event, text}, state) do
+  # proxychains output
+end
+
+def handle_info({:system_event, type, details}, state) do
+  # port_failed, port_exited, proxy_conf_missing
+end
+```
+
+**3.5. Send commands**
+```elixir
+Sexy.TDL.transmit("my_session", %Sexy.TDL.Method.GetMe{})
+```
+
+## Migration Checklist
+
+```
+[ ] 1. {Sexy, ...} → {Sexy.Bot, ...} in Application children
+[ ] 2. Sexy.build/send/notify → Sexy.Bot.build/send/notify
+[ ] 3. All Sexy.* API calls → Sexy.Bot.* (send_message, delete_message, etc.)
+[ ] 4. mix compile --force (zero warnings)
+[ ] 5. Test: send command, receive screen, click button, notifications
+```

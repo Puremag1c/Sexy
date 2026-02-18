@@ -104,7 +104,7 @@ defmodule Sexy.Poller do
   end
 
 
-  defp session, do: :persistent_term.get({Sexy, :session})
+  defp session, do: :persistent_term.get({Sexy.Bot, :session})
 
   def apply_command(u), do: session().handle_command(u)
   def apply_message(u), do: session().handle_message(u)

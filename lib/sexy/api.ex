@@ -10,7 +10,7 @@ defmodule Sexy.Api do
   # ── Internal HTTP ──────────────────────────────────────────────
 
   defp api_url do
-    :persistent_term.get({Sexy, :api_url})
+    :persistent_term.get({Sexy.Bot, :api_url})
   end
 
   defp do_request(method, body, opts \\ []) do

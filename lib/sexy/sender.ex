@@ -93,6 +93,6 @@ defmodule Sexy.Sender do
   end
 
   defp session_module do
-    :persistent_term.get({Sexy, :session})
+    :persistent_term.get({Sexy.Bot, :session})
   end
 end
