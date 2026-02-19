@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.4
+
+- Add `credo` dependency, pass `mix credo --strict` (0 issues)
+- Add 66 `@spec` annotations and `@type` definitions across 10 modules
+- Refactor `get_message_type`: 11-branch cond → `Enum.find_value` over `@message_types`
+- Refactor `fiat_chunk`: extract `format_integer_part/1` + `join_chunks/1`, remove 100 lines of duplication
+- Refactor `Sender.deliver`: extract `parse_mode/1`, `send_by_type/4`, `update_screen/3` (complexity 10→3, nesting 3→1)
+- Refactor `Handler.recursive_match`: extract `recurse_if_typed/2` (nesting 3→1)
+- Fix credo issues: alias ordering, `Enum.map_join`, `unless`→`if`, nested module refs→aliases
+- Run `mix format` on all files
+
+## 0.9.3
+
+- Add comprehensive ExDoc documentation with `@moduledoc` and `@doc` for all modules/functions
+- Add quickstart guides: `bot-quickstart.md`, `tdl-quickstart.md`
+- Add hex.pm packaging config (description, package, docs)
+- Filter auto-generated TDL.Object/Method submodules from docs
+- Expand README with Object struct, send options, and notify options documentation
+- Add MIT LICENSE
+
 ## 0.9.2
 
 - Flatten `lib/` structure: remove redundant `lib/sexy/` nesting
