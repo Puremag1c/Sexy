@@ -95,7 +95,7 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
     struct_fields = build_fields_string(fields)
 
     fields_doc =
-      if Enum.count(fields) > 0 do
+      unless Enum.empty?(fields) do
         build_fields_doc(fields)
       end
 

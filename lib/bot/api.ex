@@ -28,6 +28,8 @@ defmodule Sexy.Bot.Api do
   alias Sexy.Utils
   require Logger
 
+  @type tg_response :: map()
+
   # ── Internal HTTP ──────────────────────────────────────────────
 
   defp api_url do
@@ -66,6 +68,7 @@ defmodule Sexy.Bot.Api do
 
   # ── Polling ────────────────────────────────────────────────────
 
+  @spec get_updates(integer()) :: {:ok, [map()]} | {:error, atom()}
   def get_updates(offset) do
     url = api_url() <> "/getUpdates"
     headers = [{"Content-Type", "application/json"}]
@@ -85,26 +88,39 @@ defmodule Sexy.Bot.Api do
 
   # ── Send Messages ──────────────────────────────────────────────
 
+  @spec send_message(integer(), String.t()) :: tg_response()
   def send_message(chat_id, text) when is_integer(chat_id) do
     Jason.encode!(%{chat_id: chat_id, text: text, parse_mode: "HTML"})
     |> then(&do_request("sendMessage", &1))
   end
 
+  @spec send_message(String.t()) :: tg_response()
   def send_message(body) when is_binary(body) do
     do_request("sendMessage", body)
   end
 
+  @spec send_photo(String.t()) :: tg_response()
   def send_photo(body), do: do_request("sendPhoto", body)
+
+  @spec send_video(String.t()) :: tg_response()
   def send_video(body), do: do_request("sendVideo", body)
+
+  @spec send_animation(String.t()) :: tg_response()
   def send_animation(body), do: do_request("sendAnimation", body)
+
+  @spec send_poll(String.t()) :: tg_response()
   def send_poll(body), do: do_request("sendPoll", body)
+
+  @spec forward_message(String.t()) :: tg_response()
   def forward_message(body), do: do_request("forwardMessage", body)
 
+  @spec copy_message(integer(), integer(), integer()) :: tg_response()
   def copy_message(chat_id, from_chat_id, message_id) do
     Jason.encode!(%{chat_id: chat_id, from_chat_id: from_chat_id, message_id: message_id})
     |> then(&do_request("copyMessage", &1))
   end
 
+  @spec send_document(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
   def send_document(chat_id, file, filename, text, reply_markup) do
     body = [
       {:file, file, {"form-data", [{"name", "document"}, {"filename", filename}]}, []},
@@ -117,6 +133,7 @@ defmodule Sexy.Bot.Api do
     do_multipart("sendDocument", body)
   end
 
+  @spec send_dice(integer(), String.t()) :: tg_response()
   def send_dice(chat_id, type) do
     emoji =
       case type do
@@ -132,6 +149,7 @@ defmodule Sexy.Bot.Api do
     |> then(&do_request("sendDice", &1))
   end
 
+  @spec send_chat_action(integer(), String.t()) :: tg_response()
   def send_chat_action(chat_id, type) do
     action =
       case type do
@@ -146,20 +164,24 @@ defmodule Sexy.Bot.Api do
 
   # ── Edit Messages ──────────────────────────────────────────────
 
+  @spec edit_text(map()) :: tg_response()
   def edit_text(body) when is_map(body) do
     do_request("editMessageText", Jason.encode!(body))
   end
 
+  @spec edit_reply_markup(String.t()) :: tg_response()
   def edit_reply_markup(body) when is_binary(body) do
     do_request("editMessageReplyMarkup", body)
   end
 
+  @spec edit_media(String.t()) :: tg_response()
   def edit_media(body) do
     do_request("editMessageMedia", body)
   end
 
   # ── Delete Messages ────────────────────────────────────────────
 
+  @spec delete_message(integer(), integer()) :: tg_response()
   def delete_message(chat_id, message_id) do
     Jason.encode!(%{chat_id: chat_id, message_id: message_id})
     |> then(&do_request("deleteMessage", &1))
@@ -167,11 +189,13 @@ defmodule Sexy.Bot.Api do
 
   # ── Callback Queries ───────────────────────────────────────────
 
+  @spec answer_callback(String.t(), String.t(), boolean()) :: tg_response()
   def answer_callback(callback_id, text, alert) do
     Jason.encode!(%{callback_query_id: callback_id, text: text, show_alert: alert})
     |> then(&do_request("answerCallbackQuery", &1))
   end
 
+  @spec answer_callback(map()) :: tg_response()
   def answer_callback(obj) when is_map(obj) do
     Jason.encode!(obj)
     |> then(&do_request("answerCallbackQuery", &1))
@@ -179,6 +203,7 @@ defmodule Sexy.Bot.Api do
 
   # ── User / Chat Info ───────────────────────────────────────────
 
+  @spec get_me() :: tg_response()
   def get_me do
     url = api_url() <> "/getMe"
     headers = [{"Content-Type", "application/json"}]
@@ -193,16 +218,19 @@ defmodule Sexy.Bot.Api do
     end
   end
 
+  @spec get_chat(integer()) :: tg_response()
   def get_chat(chat_id) do
     Jason.encode!(%{chat_id: chat_id})
     |> then(&do_request("getChat", &1))
   end
 
+  @spec get_chat_member(integer(), integer()) :: tg_response()
   def get_chat_member(chat_id, user_id) do
     Jason.encode!(%{chat_id: chat_id, user_id: user_id})
     |> then(&do_request("getChatMember", &1))
   end
 
+  @spec get_user_photo(integer()) :: String.t()
   def get_user_photo(user_id) do
     response =
       Jason.encode!(%{user_id: user_id, limit: "1"})
@@ -222,6 +250,7 @@ defmodule Sexy.Bot.Api do
 
   # ── Bot Menu ───────────────────────────────────────────────────
 
+  @spec set_commands(String.t()) :: tg_response()
   def set_commands(string) do
     commands =
       string
@@ -236,6 +265,7 @@ defmodule Sexy.Bot.Api do
     |> then(&do_request("setMyCommands", &1))
   end
 
+  @spec delete_commands() :: tg_response()
   def delete_commands do
     Jason.encode!(%{scope: %{type: "default"}})
     |> then(&do_request("deleteMyCommands", &1))
@@ -243,6 +273,8 @@ defmodule Sexy.Bot.Api do
 
   # ── Payments ───────────────────────────────────────────────────
 
+  @spec send_invoice(integer(), String.t(), String.t(), String.t(), String.t(), list()) ::
+          tg_response()
   def send_invoice(chat_id, title, description, payload, currency, prices) do
     Jason.encode!(%{
       chat_id: chat_id,
@@ -256,16 +288,19 @@ defmodule Sexy.Bot.Api do
     |> then(&do_request("sendInvoice", &1))
   end
 
+  @spec answer_pre_checkout(String.t()) :: tg_response()
   def answer_pre_checkout(pre_checkout_query_id) do
     Jason.encode!(%{pre_checkout_query_id: pre_checkout_query_id, ok: true})
     |> then(&do_request("answerPreCheckoutQuery", &1))
   end
 
+  @spec refund_star_payment(integer(), String.t()) :: tg_response()
   def refund_star_payment(user_id, telegram_payment_charge_id) do
     Jason.encode!(%{user_id: user_id, telegram_payment_charge_id: telegram_payment_charge_id})
     |> then(&do_request("refundStarPayment", &1))
   end
 
+  @spec wallet_init(String.t(), number(), String.t(), String.t(), integer()) :: tg_response()
   def wallet_init(currency, amount, external_id, description, telegram_user_id) do
     wallet_key = System.get_env("WALLET")
 
@@ -298,5 +333,6 @@ defmodule Sexy.Bot.Api do
 
   # ── Universal ──────────────────────────────────────────────────
 
+  @spec request(String.t(), String.t()) :: tg_response()
   def request(body, method), do: do_request(method, body)
 end

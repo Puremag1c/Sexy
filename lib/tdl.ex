@@ -87,6 +87,7 @@ defmodule Sexy.TDL do
   alias Sexy.Utils
 
   @doc "Default TDLib configuration. Set :api_id and :api_hash before use."
+  @spec default_config() :: struct()
   def default_config do
     %Sexy.TDL.Method.SetTdlibParameters{
       database_encryption_key: nil,
@@ -115,6 +116,7 @@ defmodule Sexy.TDL do
     - `:encryption_key` — database encryption key (default: "")
     - `:children` — extra child specs for the Riser supervisor
   """
+  @spec open(String.t(), struct(), keyword()) :: {:ok, pid()} | {:error, term()}
   def open(session_name, config, opts \\ []) do
     app_pid = Keyword.fetch!(opts, :app_pid)
     proxy = Keyword.get(opts, :proxy, false)
@@ -133,7 +135,9 @@ defmodule Sexy.TDL do
            Sexy.TDL.AccountVisor,
            {Riser, {session_name, proxy, extra_children}}
          ) do
-      {:ok, pid} -> {:ok, pid}
+      {:ok, pid} ->
+        {:ok, pid}
+
       {:error, reason} ->
         Registry.drop(session_name)
         {:error, reason}
@@ -141,6 +145,7 @@ defmodule Sexy.TDL do
   end
 
   @doc "Close the session and stop all its processes."
+  @spec close(String.t()) :: :ok | {:error, :not_found}
   def close(session_name) do
     case Registry.get(session_name) do
       %{supervisor_pid: pid} when is_pid(pid) ->
@@ -155,6 +160,7 @@ defmodule Sexy.TDL do
   end
 
   @doc "Send a TDLib command over the session. Accepts maps or pre-encoded JSON strings."
+  @spec transmit(String.t(), map() | String.t()) :: term()
   def transmit(session_name, msg) when is_map(msg) do
     json =
       msg

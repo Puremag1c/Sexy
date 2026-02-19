@@ -25,8 +25,10 @@ defmodule Sexy.Bot.Screen do
       iex> Sexy.Bot.Screen.build([%{chat_id: 1, text: "A"}, %{chat_id: 2, text: "B"}])
       [%Sexy.Utils.Object{chat_id: 1, text: "A"}, %Sexy.Utils.Object{chat_id: 2, text: "B"}]
   """
+  @spec build([map()]) :: [Sexy.Utils.Object.t()]
   def build(items) when is_list(items), do: Enum.map(items, &build/1)
 
+  @spec build(map()) :: Sexy.Utils.Object.t()
   def build(map) when is_map(map) do
     struct(%Object{}, map)
   end

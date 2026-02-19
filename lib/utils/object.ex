@@ -40,6 +40,17 @@ defmodule Sexy.Utils.Object do
   for automatic detection.
   """
 
+  @type t :: %__MODULE__{
+          chat_id: integer() | nil,
+          text: String.t(),
+          media: String.t() | nil,
+          kb: map(),
+          entity: list(),
+          update_data: map(),
+          file: binary() | nil,
+          filename: String.t() | nil
+        }
+
   defstruct chat_id: nil,
             text: "",
             media: nil,
@@ -49,11 +60,14 @@ defmodule Sexy.Utils.Object do
             file: nil,
             filename: nil
 
+  @type object_type :: String.t()
+
   @doc """
   Detect the content type of an Object based on its `media` field.
 
   Returns one of: `"txt"`, `"file"`, `"photo"`, `"video"`, `"animation"`, `"unknown"`.
   """
+  @spec detect_object_type(t()) :: object_type()
   def detect_object_type(obj) do
     cond do
       obj.media == nil -> "txt"

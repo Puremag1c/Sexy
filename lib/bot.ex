@@ -72,6 +72,11 @@ defmodule Sexy.Bot do
   use Supervisor
   import Kernel, except: [send: 2]
 
+  alias Sexy.Bot.{Notification, Screen, Sender}
+
+  @type tg_response :: map()
+
+  @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(opts) do
     token = Keyword.fetch!(opts, :token)
     session = Keyword.fetch!(opts, :session)
@@ -99,7 +104,8 @@ defmodule Sexy.Bot do
       Sexy.Bot.build(%{chat_id: 123, text: "Hello!"})
       #=> %Sexy.Utils.Object{chat_id: 123, text: "Hello!", ...}
   """
-  def build(map), do: Sexy.Bot.Screen.build(map)
+  @spec build(map() | [map()]) :: Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()]
+  def build(map), do: Screen.build(map)
 
   @doc """
   Send an Object (or list of Objects) to Telegram.
@@ -122,14 +128,16 @@ defmodule Sexy.Bot do
       # Send without replacing the current screen
       Sexy.Bot.send(object, update_mid: false)
   """
-  def send(object, opts \\ []), do: Sexy.Bot.Sender.deliver(object, opts)
+  @spec send(Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()], keyword()) :: tg_response() | :ok
+  def send(object, opts \\ []), do: Sender.deliver(object, opts)
 
   @doc """
   Send a notification message with optional dismiss/navigate buttons.
 
   See `Sexy.Bot.Notification` for full option details.
   """
-  def notify(chat_id, msg, opts \\ []), do: Sexy.Bot.Notification.notify(chat_id, msg, opts)
+  @spec notify(integer(), map(), keyword()) :: tg_response()
+  def notify(chat_id, msg, opts \\ []), do: Notification.notify(chat_id, msg, opts)
 
   # ── Telegram API ──────────────────────────────────────────────
 
@@ -238,7 +246,8 @@ defmodule Sexy.Bot do
   defdelegate request(body, method), to: Sexy.Bot.Api
 
   @doc "Send a Telegram Stars invoice."
-  defdelegate send_invoice(chat_id, title, description, payload, currency, prices), to: Sexy.Bot.Api
+  defdelegate send_invoice(chat_id, title, description, payload, currency, prices),
+    to: Sexy.Bot.Api
 
   @doc "Confirm a pre-checkout query (for Telegram Payments)."
   defdelegate answer_pre_checkout(pre_checkout_query_id), to: Sexy.Bot.Api

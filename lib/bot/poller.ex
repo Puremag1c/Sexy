@@ -24,6 +24,10 @@ defmodule Sexy.Bot.Poller do
       then calls `Session.handle_transit(chat_id, command, query_params)`
   """
   use GenServer
+
+  alias Sexy.Bot.Api
+  alias Sexy.Utils
+
   require Logger
 
   # Server
@@ -40,7 +44,7 @@ defmodule Sexy.Bot.Poller do
 
   def handle_cast(:update, offset) do
     new_offset =
-      Sexy.Bot.Api.get_updates(offset)
+      Api.get_updates(offset)
       |> process_messages
 
     {:noreply, new_offset + 1, 100}
@@ -91,7 +95,7 @@ defmodule Sexy.Bot.Poller do
   end
 
   defp match_update(%{callback_query: query} = u) do
-    case Sexy.Utils.Bot.get_command_name(query.data) do
+    case Utils.Bot.get_command_name(query.data) do
       "_delete" ->
         Task.start(fn -> handle_builtin_delete(query) end)
 
@@ -113,20 +117,19 @@ defmodule Sexy.Bot.Poller do
     do: Logger.warning("Unknown update in poller\n\n#{inspect(u, pretty: true)}")
 
   defp handle_builtin_delete(query) do
-    params = Sexy.Utils.get_query(query.data)
+    params = Utils.get_query(query.data)
     chat_id = query.message.chat.id
-    Sexy.Bot.Api.delete_message(chat_id, params.mid)
-    Sexy.Bot.Api.answer_callback(query.id, "", false)
+    Api.delete_message(chat_id, params.mid)
+    Api.answer_callback(query.id, "", false)
   end
 
   defp handle_builtin_transit(query) do
-    params = Sexy.Utils.get_query(query.data)
+    params = Utils.get_query(query.data)
     chat_id = query.message.chat.id
-    Sexy.Bot.Api.delete_message(chat_id, params.mid)
-    Sexy.Bot.Api.answer_callback(query.id, "", false)
+    Api.delete_message(chat_id, params.mid)
+    Api.answer_callback(query.id, "", false)
     session().handle_transit(chat_id, params.cmd, Map.drop(params, [:mid, :cmd]))
   end
-
 
   defp session, do: :persistent_term.get({Sexy.Bot, :session})
 
@@ -135,5 +138,4 @@ defmodule Sexy.Bot.Poller do
   def apply_query(u), do: session().handle_query(u)
   def apply_poll(u), do: session().handle_poll(u)
   def apply_chat_member(u), do: session().handle_chat_member(u)
-
 end

@@ -44,7 +44,7 @@ defmodule Sexy.MixProject do
         "README.md": [title: "Overview"],
         "CHANGELOG.md": [title: "Changelog"],
         "guides/bot-quickstart.md": [title: "Bot Quick Start"],
-        "guides/tdl-quickstart.md": [title: "TDLib Quick Start"],
+        "guides/tdl-quickstart.md": [title: "TDLib Quick Start"]
       ],
       filter_modules: fn module, _meta ->
         name = inspect(module)
@@ -86,7 +86,8 @@ defmodule Sexy.MixProject do
       {:httpoison, "~> 1.8"},
       {:jason, "~> 1.2"},
       {:base62, "~> 1.2"},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 end

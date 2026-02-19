@@ -36,6 +36,9 @@ defmodule Sexy.Bot.Sender do
     * `:update_mid` — `true` (default) to delete old message and save new mid,
       `false` to send without modifying screen state
   """
+  @type tg_response :: map()
+
+  @spec deliver(Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()], keyword()) :: tg_response() | :ok
   def deliver(items, opts \\ [])
 
   def deliver(items, opts) when is_list(items) do
@@ -49,63 +52,12 @@ defmodule Sexy.Bot.Sender do
   def deliver(object, opts) do
     update_mid = Keyword.get(opts, :update_mid, true)
     objtype = Utils.Object.detect_object_type(object)
-
-    {parse, text} =
-      if object.entity == [],
-        do: {"HTML", object.text},
-        else: {"", object.text}
-
-    message =
-      cond do
-        objtype == "txt" ->
-          %{
-            chat_id: object.chat_id,
-            text: text,
-            entities: object.entity,
-            parse_mode: parse,
-            reply_markup: object.kb
-          }
-          |> Jason.encode!()
-          |> Api.send_message()
-
-        objtype == "file" ->
-          Api.send_document(
-            object.chat_id,
-            object.file,
-            object.filename,
-            object.text,
-            Jason.encode!(object.kb)
-          )
-
-        true ->
-          %{
-            objtype => object.media,
-            chat_id: object.chat_id,
-            caption_entities: object.entity,
-            parse_mode: parse,
-            caption: text,
-            reply_markup: object.kb
-          }
-          |> Jason.encode!()
-          |> Api.request("send" <> String.capitalize(objtype))
-      end
+    {parse, text} = parse_mode(object)
+    message = send_by_type(objtype, object, parse, text)
 
     case message do
       %{"ok" => true} ->
-        if update_mid do
-          mtype = if objtype == "txt", do: "txt", else: "media"
-          session = session_module()
-
-          old_mid = session.get_message_id(object.chat_id)
-          if old_mid, do: Api.delete_message(object.chat_id, old_mid)
-
-          session.on_message_sent(
-            object.chat_id,
-            message["result"]["message_id"],
-            mtype,
-            object.update_data
-          )
-        end
+        if update_mid, do: update_screen(objtype, object, message)
 
       error ->
         Logger.error("Sexy.Bot.Sender | Failed to send message: #{error["description"]}")
@@ -113,6 +65,58 @@ defmodule Sexy.Bot.Sender do
     end
 
     message
+  end
+
+  defp parse_mode(%{entity: [], text: text}), do: {"HTML", text}
+  defp parse_mode(%{text: text}), do: {"", text}
+
+  defp send_by_type("txt", object, parse, text) do
+    %{
+      chat_id: object.chat_id,
+      text: text,
+      entities: object.entity,
+      parse_mode: parse,
+      reply_markup: object.kb
+    }
+    |> Jason.encode!()
+    |> Api.send_message()
+  end
+
+  defp send_by_type("file", object, _parse, _text) do
+    Api.send_document(
+      object.chat_id,
+      object.file,
+      object.filename,
+      object.text,
+      Jason.encode!(object.kb)
+    )
+  end
+
+  defp send_by_type(objtype, object, parse, text) do
+    %{
+      objtype => object.media,
+      chat_id: object.chat_id,
+      caption_entities: object.entity,
+      parse_mode: parse,
+      caption: text,
+      reply_markup: object.kb
+    }
+    |> Jason.encode!()
+    |> Api.request("send" <> String.capitalize(objtype))
+  end
+
+  defp update_screen(objtype, object, message) do
+    mtype = if objtype == "txt", do: "txt", else: "media"
+    session = session_module()
+    old_mid = session.get_message_id(object.chat_id)
+    if old_mid, do: Api.delete_message(object.chat_id, old_mid)
+
+    session.on_message_sent(
+      object.chat_id,
+      message["result"]["message_id"],
+      mtype,
+      object.update_data
+    )
   end
 
   defp session_module do

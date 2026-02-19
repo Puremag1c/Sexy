@@ -42,7 +42,7 @@ defmodule Sexy.Bot.Notification do
     * `:extra_buttons` — additional button rows as `[[%{text: ..., callback_data: ...}]]`
   """
 
-  alias Sexy.Bot.{Api, Sender, Screen}
+  alias Sexy.Bot.{Api, Screen, Sender}
   require Logger
 
   @doc """
@@ -58,6 +58,15 @@ defmodule Sexy.Bot.Notification do
     - `extra_buttons: [[%{text: ..., ...}]]` — extra button rows appended after navigate/dismiss
     - `dismiss_text: "text"` — custom dismiss button text
   """
+  @type navigate_opt :: {String.t(), String.t()} | {String.t(), (integer() -> String.t())}
+
+  @type notify_opt ::
+          {:replace, boolean()}
+          | {:navigate, navigate_opt()}
+          | {:dismiss_text, String.t()}
+          | {:extra_buttons, [[map()]]}
+
+  @spec notify(integer(), map(), [notify_opt()]) :: map()
   def notify(chat_id, message, opts \\ []) do
     replace = Keyword.get(opts, :replace, false)
 

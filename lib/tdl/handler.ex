@@ -115,30 +115,23 @@ defmodule Sexy.TDL.Handler do
     |> Map.from_struct()
     |> Enum.reduce(struct, fn
       {key, value}, acc when is_map(value) and not is_struct(value) ->
-        if Map.has_key?(value, "@type") do
-          %{acc | key => recursive_match(value, prefix)}
-        else
-          acc
-        end
+        %{acc | key => recurse_if_typed(value, prefix)}
 
       {key, value}, acc when is_list(value) ->
-        mapped =
-          Enum.map(value, fn
-            item when is_map(item) ->
-              if Map.has_key?(item, "@type"),
-                do: recursive_match(item, prefix),
-                else: item
-
-            item ->
-              item
-          end)
-
-        %{acc | key => mapped}
+        %{acc | key => Enum.map(value, &recurse_if_typed(&1, prefix))}
 
       _, acc ->
         acc
     end)
   end
+
+  defp recurse_if_typed(item, prefix) when is_map(item) do
+    if Map.has_key?(item, "@type"),
+      do: recursive_match(item, prefix),
+      else: item
+  end
+
+  defp recurse_if_typed(item, _prefix), do: item
 
   defp match_object(json, prefix) do
     type =

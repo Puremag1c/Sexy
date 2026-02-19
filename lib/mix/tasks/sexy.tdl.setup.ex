@@ -76,18 +76,16 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
     dir = Path.dirname(binary_path)
     candidate = Path.join(dir, "types.json")
 
-    cond do
-      File.exists?(candidate) ->
-        answer =
-          Mix.shell().prompt("Found types.json at #{candidate}. Generate types? [Y/n]:")
-          |> String.trim()
-          |> String.downcase()
+    if File.exists?(candidate) do
+      answer =
+        Mix.shell().prompt("Found types.json at #{candidate}. Generate types? [Y/n]:")
+        |> String.trim()
+        |> String.downcase()
 
-        if answer in ["", "y", "yes"], do: candidate, else: prompt_custom_types()
-
-      true ->
-        Mix.shell().info("No types.json found near binary.")
-        prompt_custom_types()
+      if answer in ["", "y", "yes"], do: candidate, else: prompt_custom_types()
+    else
+      Mix.shell().info("No types.json found near binary.")
+      prompt_custom_types()
     end
   end
 

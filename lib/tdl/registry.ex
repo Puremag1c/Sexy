@@ -30,6 +30,8 @@ defmodule Sexy.TDL.Registry do
     :encryption_key
   ]
 
+  @type t :: %__MODULE__{}
+
   @name __MODULE__
 
   def start_link(_) do
@@ -43,10 +45,12 @@ defmodule Sexy.TDL.Registry do
 
   # Public API
 
+  @spec set(String.t(), t()) :: true
   def set(session_name, %__MODULE__{} = struct) do
     GenServer.call(@name, {:set, session_name, struct})
   end
 
+  @spec get(String.t()) :: t() | nil
   def get(session_name) do
     case :ets.lookup(@name, session_name) do
       [{_key, value}] -> value
@@ -54,6 +58,7 @@ defmodule Sexy.TDL.Registry do
     end
   end
 
+  @spec get(String.t(), atom()) :: term() | nil
   def get(session_name, field) do
     case get(session_name) do
       nil -> nil
@@ -61,14 +66,17 @@ defmodule Sexy.TDL.Registry do
     end
   end
 
+  @spec update(String.t(), keyword() | map()) :: true | false
   def update(session_name, change) do
     GenServer.call(@name, {:update, session_name, change})
   end
 
+  @spec drop(String.t()) :: true
   def drop(session_name) do
     GenServer.call(@name, {:drop, session_name})
   end
 
+  @spec list() :: [{String.t(), t()}]
   def list do
     :ets.tab2list(@name)
   end

@@ -36,6 +36,7 @@ defmodule Sexy.Utils do
       iex> Sexy.Utils.get_query("/start")
       %{}
   """
+  @spec get_query(String.t()) :: map()
   def get_query(string) do
     string
     |> String.trim("/")
@@ -57,7 +58,9 @@ defmodule Sexy.Utils do
       iex> Sexy.Utils.split_query(nil)
       %{}
   """
+  @spec split_query(String.t() | nil) :: map()
   def split_query(nil), do: %{}
+
   def split_query(query_string) do
     query_string
     |> String.split("-")
@@ -97,15 +100,14 @@ defmodule Sexy.Utils do
       iex> Sexy.Utils.stringify_query(%{id: 42, page: 1})
       "id=42-page=1"
   """
+  @spec stringify_query(map()) :: String.t()
   def stringify_query(query) do
-    query
-    |> Enum.map(fn {k, v} -> "#{k}=#{stringify_value(v)}" end)
-    |> Enum.join("-")
+    Enum.map_join(query, "-", fn {k, v} -> "#{k}=#{stringify_value(v)}" end)
   end
 
   @doc false
   def stringify_value(val) when is_float(val) do
-    :erlang.float_to_binary(val, [decimals: 2])
+    :erlang.float_to_binary(val, decimals: 2)
   end
 
   def stringify_value(val), do: val
@@ -115,6 +117,7 @@ defmodule Sexy.Utils do
 
   Unlike `Map.get/3`, this also replaces explicit `nil` values with the default.
   """
+  @spec get_and_avoid_nil(map(), atom(), term()) :: term()
   def get_and_avoid_nil(map, key, default) do
     case Map.get(map, key, default) do
       nil -> default
@@ -127,11 +130,12 @@ defmodule Sexy.Utils do
 
   Used internally to normalize Telegram API responses and TDLib JSON before processing.
   """
+  @spec strip(map() | struct() | list() | term()) :: map() | list() | term()
   def strip(map) when is_non_struct_map(map) do
     Enum.reduce(map, %{}, fn {k, v}, acc ->
-      unless is_atom(k),
-        do: Map.put(acc, String.to_atom(k), strip(v)),
-        else: Map.put(acc, k, strip(v))
+      if is_atom(k),
+        do: Map.put(acc, k, strip(v)),
+        else: Map.put(acc, String.to_atom(k), strip(v))
     end)
   end
 
@@ -139,8 +143,8 @@ defmodule Sexy.Utils do
     map
     |> Map.from_struct()
     |> Enum.reduce(%{}, fn {k, v}, acc ->
-        Map.put(acc, k, strip(v))
-      end)
+      Map.put(acc, k, strip(v))
+    end)
   end
 
   def strip(list) when is_list(list) do
@@ -162,107 +166,35 @@ defmodule Sexy.Utils do
       iex> Sexy.Utils.fiat_chunk(1234.5, 2)
       "1 234.50"
   """
-  def fiat_chunk(val, _0) when is_integer(val) do
-    p =
-      val
-      |> to_string()
-      |> String.to_charlist()
-      |> Enum.reverse()
-
-    case Enum.chunk_every(p, 3) do
-      [t] ->
-        t |> List.to_string() |> String.reverse()
-
-      [t, h] ->
-        String.reverse(List.to_string(h)) <> " " <> String.reverse(List.to_string(t))
-
-      [t, h, m] ->
-        String.reverse(List.to_string(m)) <>
-          " " <> String.reverse(List.to_string(h)) <> " " <> String.reverse(List.to_string(t))
-
-      [t, h, m, hh] ->
-        String.reverse(List.to_string(hh)) <> " " <>
-          String.reverse(List.to_string(m)) <> " " <>
-          String.reverse(List.to_string(h)) <> " " <>
-          String.reverse(List.to_string(t))
-    end
+  @spec fiat_chunk(number(), non_neg_integer()) :: String.t()
+  def fiat_chunk(val, _dec) when is_integer(val) do
+    format_integer_part(Integer.to_string(val))
   end
 
   def fiat_chunk(float, 0) do
-    p =
-      float
-      |> :erlang.float_to_binary(decimals: 0)
-      |> String.to_charlist()
-      |> Enum.reverse()
-
-    case Enum.chunk_every(p, 3) do
-      [t] ->
-        t |> List.to_string() |> String.reverse()
-
-      [t, h] ->
-        String.reverse(List.to_string(h)) <> " " <> String.reverse(List.to_string(t))
-
-      [t, h, m] ->
-        String.reverse(List.to_string(m)) <>
-          " " <> String.reverse(List.to_string(h)) <> " " <> String.reverse(List.to_string(t))
-
-      [t, h, m, hh] ->
-        String.reverse(List.to_string(hh)) <> " " <>
-          String.reverse(List.to_string(m)) <> " " <>
-          String.reverse(List.to_string(h)) <> " " <>
-          String.reverse(List.to_string(t))
-    end
+    float
+    |> :erlang.float_to_binary(decimals: 0)
+    |> format_integer_part()
   end
 
   def fiat_chunk(float, dec) do
-    p =
-      float
-      |> :erlang.float_to_binary(decimals: dec)
-      |> String.to_charlist()
-      |> Enum.reverse()
+    str = :erlang.float_to_binary(float, decimals: dec)
+    [int_part, dec_part] = String.split(str, ".")
+    format_integer_part(int_part) <> "." <> dec_part
+  end
 
-    nu =
-      case Enum.at(p, 1) do
-        46 ->
-          String.to_charlist("0" <> List.to_string(p))
+  defp format_integer_part(str) do
+    str
+    |> String.to_charlist()
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> join_chunks()
+  end
 
-        _ ->
-          p
-      end
-
-    case Enum.chunk_every(nu, 6) do
-      [t] ->
-        t |> List.to_string() |> String.reverse()
-
-      [t, h] ->
-        case Enum.chunk_every(h, 3) do
-          [m] ->
-            String.reverse(List.to_string(m)) <> " " <> String.reverse(List.to_string(t))
-
-          [m, hh] ->
-            String.reverse(List.to_string(hh)) <>
-              " " <> String.reverse(List.to_string(m)) <> " " <> String.reverse(List.to_string(t))
-        end
-
-      [t, h, d] ->
-        [m, hh] = Enum.chunk_every(h, 3)
-
-        case Enum.chunk_every(d, 3) do
-          [g] ->
-            String.reverse(List.to_string(g)) <>
-              " " <>
-              String.reverse(List.to_string(hh)) <>
-              " " <> String.reverse(List.to_string(m)) <> " " <> String.reverse(List.to_string(t))
-
-          [g, hhh] ->
-            String.reverse(List.to_string(hhh)) <>
-              " " <>
-              String.reverse(List.to_string(g)) <>
-              " " <>
-              String.reverse(List.to_string(hh)) <>
-              " " <> String.reverse(List.to_string(m)) <> " " <> String.reverse(List.to_string(t))
-        end
-    end
+  defp join_chunks(chunks) do
+    chunks
+    |> Enum.reverse()
+    |> Enum.map_join(" ", fn chunk -> chunk |> Enum.reverse() |> List.to_string() end)
   end
 
   @doc """
@@ -273,6 +205,7 @@ defmodule Sexy.Utils do
       iex> Sexy.Utils.stringify_uuid("550e8400-e29b-41d4-a716-446655440000")
       "2DEf3recbEMh3MaqjC1UDI"
   """
+  @spec stringify_uuid(String.t()) :: String.t()
   def stringify_uuid(uuid) when is_binary(uuid) do
     uuid
     |> String.replace("-", "")
@@ -289,6 +222,7 @@ defmodule Sexy.Utils do
       iex> Sexy.Utils.normalize_uuid("2DEf3recbEMh3MaqjC1UDI")
       "550e8400-e29b-41d4-a716-446655440000"
   """
+  @spec normalize_uuid(String.t()) :: String.t()
   def normalize_uuid(compact) when is_binary(compact) do
     compact
     |> Base62.decode!()
@@ -297,5 +231,4 @@ defmodule Sexy.Utils do
     |> String.pad_leading(32, "0")
     |> String.replace(~r/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "\\1-\\2-\\3-\\4-\\5")
   end
-
 end
