@@ -1,4 +1,28 @@
 defmodule Sexy.Bot.Poller do
+  @moduledoc """
+  GenServer that polls Telegram for updates and routes them to `Sexy.Bot.Session` callbacks.
+
+  Started automatically as a child of `Sexy.Bot`. Each incoming update is dispatched
+  in a separate `Task` to avoid blocking the polling loop.
+
+  ## Routing rules
+
+  | Update type | Condition | Session callback |
+  |---|---|---|
+  | `message` | text starts with `/` | `handle_command/1` |
+  | `message` | otherwise | `handle_message/1` |
+  | `callback_query` | data starts with `/_delete` | built-in: deletes the message |
+  | `callback_query` | data starts with `/_transit` | built-in: deletes + `handle_transit/3` |
+  | `callback_query` | otherwise | `handle_query/1` |
+  | `poll` | — | `handle_poll/1` |
+  | `my_chat_member` | — | `handle_chat_member/1` |
+
+  ## Built-in routes
+
+    * `/_delete mid=<id>` — deletes message with given id, answers the callback
+    * `/_transit mid=<id>-cmd=<command>-...` — deletes message, answers callback,
+      then calls `Session.handle_transit(chat_id, command, query_params)`
+  """
   use GenServer
   require Logger
 

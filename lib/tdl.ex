@@ -1,25 +1,84 @@
 defmodule Sexy.TDL do
   @moduledoc """
-  TDLib integration for Sexy. Manages userbot sessions via TDLib binary.
+  TDLib integration for Elixir — manage userbot sessions via a `tdlib_json_cli` binary.
 
-  Add to your application supervisor:
+  ## Setup
 
-      children = [
-        Sexy.TDL,
-        # ...
-      ]
+  1. Install `tdlib_json_cli` (or build from source)
+  2. Configure the binary path:
 
-  Then open sessions:
+         # config/config.exs
+         config :sexy,
+           tdlib_binary: "/usr/local/bin/tdlib_json_cli",
+           tdlib_data_root: "/tmp/tdlib_data"
 
-      config = Sexy.TDL.default_config()
-      config = %{config | api_id: "12345", api_hash: "abc123"}
-      Sexy.TDL.open("my_session", config, app_pid: self())
+     Or run the interactive wizard: `mix sexy.tdl.setup`
 
-  Incoming events are sent to `app_pid`:
+  3. Add to your supervision tree:
 
-      {:recv, struct}              # TDLib object
-      {:proxy_event, text}         # proxychains output
-      {:system_event, type, details} # system events (port_failed, port_exited, etc.)
+         children = [Sexy.TDL]
+
+  ## Opening sessions
+
+      config = %{Sexy.TDL.default_config() |
+        api_id: "12345",
+        api_hash: "abc123",
+        database_directory: "/tmp/tdlib_data/my_account"
+      }
+
+      {:ok, _pid} = Sexy.TDL.open("my_account", config, app_pid: self())
+
+  ## Receiving events
+
+  All TDLib events are sent as messages to the `app_pid` process:
+
+      def handle_info({:recv, %Sexy.TDL.Object.UpdateNewMessage{} = msg}, state) do
+        # Handle new message
+        {:noreply, state}
+      end
+
+      def handle_info({:recv, _other}, state), do: {:noreply, state}
+
+      def handle_info({:system_event, :port_exited, status}, state) do
+        Logger.error("TDLib port exited: \#{status}")
+        {:noreply, state}
+      end
+
+  ## Sending commands
+
+      # Using auto-generated Method structs
+      Sexy.TDL.transmit("my_account", %Sexy.TDL.Method.GetMe{})
+
+      Sexy.TDL.transmit("my_account", %Sexy.TDL.Method.SendMessage{
+        chat_id: 123456,
+        input_message_content: %Sexy.TDL.Object.InputMessageText{
+          text: %Sexy.TDL.Object.FormattedText{text: "Hello!"}
+        }
+      })
+
+      # Or using plain maps
+      Sexy.TDL.transmit("my_account", %{"@type" => "getMe"})
+
+  ## Supervision tree
+
+      Sexy.TDL (Supervisor)
+        ├── Registry (ETS session storage)
+        └── AccountVisor (DynamicSupervisor)
+              └── Riser per session (one_for_all)
+                    ├── Backend (Port to tdlib_json_cli)
+                    ├── Handler (JSON → Elixir structs)
+                    └── ...your extra children
+
+  ## Auto-generated types
+
+  Sexy ships **2558 structs** generated from TDLib API documentation:
+
+    * `Sexy.TDL.Method.*` — 786 API methods
+    * `Sexy.TDL.Object.*` — 1772 response/event types
+
+  Regenerate for a different TDLib version:
+
+      mix sexy.tdl.generate_types /path/to/types.json
   """
 
   use Supervisor

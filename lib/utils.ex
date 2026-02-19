@@ -1,8 +1,41 @@
 defmodule Sexy.Utils do
   @moduledoc """
-    Utils for Sexy
+  Utility functions used across Sexy: query parsing, number formatting,
+  UUID compression, and struct conversion.
+
+  ## Query format
+
+  Sexy uses a compact query format for Telegram callback data:
+
+      "/command key1=value1-key2=value2-key3=value3"
+
+  Values are automatically parsed as integers, floats, or booleans when possible.
+
+  ## Examples
+
+      iex> Sexy.Utils.get_query("/buy id=42-amount=9.99-gift=true")
+      %{id: 42, amount: 9.99, gift: true}
+
+      iex> Sexy.Utils.stringify_query(%{id: 42, page: 1})
+      "id=42-page=1"
+
+      iex> Sexy.Utils.fiat_chunk(1234567, 0)
+      "1 234 567"
   """
 
+  @doc """
+  Parse a command string and extract query parameters.
+
+  Returns an empty map if no parameters are present.
+
+  ## Examples
+
+      iex> Sexy.Utils.get_query("/buy id=42-page=1")
+      %{id: 42, page: 1}
+
+      iex> Sexy.Utils.get_query("/start")
+      %{}
+  """
   def get_query(string) do
     string
     |> String.trim("/")
@@ -13,6 +46,17 @@ defmodule Sexy.Utils do
     end
   end
 
+  @doc """
+  Parse a query string in `"key=val-key=val"` format into an atom-keyed map.
+
+  ## Examples
+
+      iex> Sexy.Utils.split_query("id=42-name=hello")
+      %{id: 42, name: "hello"}
+
+      iex> Sexy.Utils.split_query(nil)
+      %{}
+  """
   def split_query(nil), do: %{}
   def split_query(query_string) do
     query_string
@@ -45,18 +89,32 @@ defmodule Sexy.Utils do
     end
   end
 
+  @doc """
+  Convert an atom-keyed map back to a `"key=val-key=val"` query string.
+
+  ## Example
+
+      iex> Sexy.Utils.stringify_query(%{id: 42, page: 1})
+      "id=42-page=1"
+  """
   def stringify_query(query) do
     query
     |> Enum.map(fn {k, v} -> "#{k}=#{stringify_value(v)}" end)
     |> Enum.join("-")
   end
 
+  @doc false
   def stringify_value(val) when is_float(val) do
     :erlang.float_to_binary(val, [decimals: 2])
   end
 
   def stringify_value(val), do: val
 
+  @doc """
+  Get a value from a map, falling back to `default` if the key is missing **or** `nil`.
+
+  Unlike `Map.get/3`, this also replaces explicit `nil` values with the default.
+  """
   def get_and_avoid_nil(map, key, default) do
     case Map.get(map, key, default) do
       nil -> default
@@ -64,7 +122,11 @@ defmodule Sexy.Utils do
     end
   end
 
-  # MapStrings to atoms and Structs to map parser
+  @doc """
+  Recursively convert string keys to atoms and structs to plain maps.
+
+  Used internally to normalize Telegram API responses and TDLib JSON before processing.
+  """
   def strip(map) when is_non_struct_map(map) do
     Enum.reduce(map, %{}, fn {k, v}, acc ->
       unless is_atom(k),
@@ -89,6 +151,17 @@ defmodule Sexy.Utils do
     value
   end
 
+  @doc """
+  Format a number with thousands separators (space-separated groups).
+
+  ## Examples
+
+      iex> Sexy.Utils.fiat_chunk(1234567, 0)
+      "1 234 567"
+
+      iex> Sexy.Utils.fiat_chunk(1234.5, 2)
+      "1 234.50"
+  """
   def fiat_chunk(val, _0) when is_integer(val) do
     p =
       val
@@ -192,6 +265,14 @@ defmodule Sexy.Utils do
     end
   end
 
+  @doc """
+  Compress a UUID string into a short Base62 representation.
+
+  ## Example
+
+      iex> Sexy.Utils.stringify_uuid("550e8400-e29b-41d4-a716-446655440000")
+      "2DEf3recbEMh3MaqjC1UDI"
+  """
   def stringify_uuid(uuid) when is_binary(uuid) do
     uuid
     |> String.replace("-", "")
@@ -200,6 +281,14 @@ defmodule Sexy.Utils do
     |> Base62.encode()
   end
 
+  @doc """
+  Expand a Base62-compressed UUID back to the standard `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` format.
+
+  ## Example
+
+      iex> Sexy.Utils.normalize_uuid("2DEf3recbEMh3MaqjC1UDI")
+      "550e8400-e29b-41d4-a716-446655440000"
+  """
   def normalize_uuid(compact) when is_binary(compact) do
     compact
     |> Base62.decode!()

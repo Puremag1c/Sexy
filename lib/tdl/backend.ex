@@ -1,5 +1,18 @@
 defmodule Sexy.TDL.Backend do
-  @moduledoc false
+  @moduledoc """
+  GenServer managing the Erlang Port to the `tdlib_json_cli` binary.
+
+  Handles line-buffering of port output, ANSI stripping, and error parsing.
+  Forwards complete JSON lines to `Sexy.TDL.Handler` and system/proxy events
+  to the app process.
+
+  Started automatically by `Sexy.TDL.Riser` — not called directly.
+
+  ## Proxy support
+
+  When opened with `proxy: true`, the binary is wrapped in `proxychains4`.
+  Requires a `proxy.conf` file at `<tdlib_data_root>/<session>/proxy.conf`.
+  """
   use GenServer
 
   alias Sexy.TDL.Registry

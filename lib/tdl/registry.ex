@@ -1,5 +1,23 @@
 defmodule Sexy.TDL.Registry do
-  @moduledoc false
+  @moduledoc """
+  ETS-based session registry for TDLib sessions.
+
+  Stores per-session metadata (pids, config, encryption keys) in a public ETS table
+  with read concurrency enabled. Write operations go through the GenServer to
+  ensure serialization.
+
+  Started automatically by `Sexy.TDL` — not called directly.
+
+  ## Stored fields
+
+    * `:name` — session identifier
+    * `:config` — TDLib configuration (`SetTdlibParameters` struct)
+    * `:supervisor_pid` — Riser supervisor pid
+    * `:backend_pid` — Backend GenServer pid
+    * `:handler_pid` — Handler GenServer pid
+    * `:app_pid` — target process for events
+    * `:encryption_key` — database encryption key
+  """
   use GenServer
 
   defstruct [

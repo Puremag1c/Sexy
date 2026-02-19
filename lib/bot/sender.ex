@@ -1,6 +1,27 @@
 defmodule Sexy.Bot.Sender do
   @moduledoc """
-  Sends Object to Telegram. Handles type detection, mid lifecycle, session updates.
+  Delivers `Sexy.Utils.Object` structs to Telegram and manages the message lifecycle.
+
+  This is the engine behind `Sexy.Bot.send/2`. You typically don't call it directly.
+
+  ## How it works
+
+  1. Detects content type via `Sexy.Utils.Object.detect_object_type/1`
+  2. Calls the appropriate `Sexy.Bot.Api` method (`send_message`, `send_photo`,
+     `send_document`, etc.)
+  3. If `update_mid: true` (default):
+     - Deletes the old message via `Session.get_message_id/1`
+     - Saves the new message id via `Session.on_message_sent/4`
+
+  ## Content type detection
+
+  | `Object.media` value | Type | API method |
+  |---|---|---|
+  | `nil` | text | `sendMessage` |
+  | `"file"` | document | `sendDocument` (multipart) |
+  | starts with `"A"` | photo | `sendPhoto` |
+  | starts with `"B"` | video | `sendVideo` |
+  | starts with `"C"` | animation | `sendAnimation` |
   """
 
   alias Sexy.Bot.Api
@@ -10,9 +31,10 @@ defmodule Sexy.Bot.Sender do
   @doc """
   Send an Object (or list of Objects) to Telegram.
 
-  Options:
-    - `update_mid: true` (default) — delete previous message, save new mid via Session
-    - `update_mid: false` — send without touching current screen state
+  ## Options
+
+    * `:update_mid` — `true` (default) to delete old message and save new mid,
+      `false` to send without modifying screen state
   """
   def deliver(items, opts \\ [])
 

@@ -1,7 +1,28 @@
 defmodule Sexy.Bot.Api do
   @moduledoc """
-  Telegram Bot API client with readable method names.
-  All methods use a single `do_request/3` internally.
+  Low-level HTTP client for the Telegram Bot API.
+
+  Every method builds a JSON (or multipart) body and POSTs it to
+  `https://api.telegram.org/bot<TOKEN>/<method>`.
+
+  Most users don't need to call this module directly — use `Sexy.Bot` which
+  delegates here. For any Telegram method not explicitly wrapped, call `request/2`:
+
+      body = Jason.encode!(%{chat_id: 123, text: "hi"})
+      Sexy.Bot.Api.request(body, "sendMessage")
+
+  ## Timeouts
+
+    * JSON requests: 5 seconds (configurable via opts)
+    * Multipart uploads: 20 seconds
+    * Polling (`get_updates`): 10 seconds
+
+  ## Return values
+
+  All methods return decoded JSON as a map:
+
+      %{"ok" => true, "result" => %{...}}
+      %{"ok" => false, "description" => "..."}
   """
 
   alias Sexy.Utils

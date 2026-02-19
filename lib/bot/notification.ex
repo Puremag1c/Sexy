@@ -1,10 +1,45 @@
 defmodule Sexy.Bot.Notification do
   @moduledoc """
-  Send notification messages with dismiss/navigate buttons.
+  Send notification messages with dismiss and navigate buttons.
 
-  Supports two modes:
-  - overlay (replace: false) — sends without touching current screen, adds dismiss button
-  - replace (replace: true) — replaces current screen, saves new mid, no dismiss button
+  Notifications are messages sent to a chat that are separate from the main screen flow.
+  They support two modes:
+
+  ## Overlay mode (default)
+
+  Sends a message **without** replacing the current screen. Adds a dismiss button
+  so the user can remove the notification:
+
+      Sexy.Bot.notify(chat_id, %{text: "Action completed!"})
+
+  ## Replace mode
+
+  Replaces the current active screen. The notification **becomes** the new screen
+  (mid is updated via Session):
+
+      Sexy.Bot.notify(chat_id, %{text: "Payment received!"}, replace: true)
+
+  ## Navigation buttons
+
+  Add a button that deletes the notification and navigates to a command.
+  Sexy wraps this into the built-in `/_transit` route:
+
+      Sexy.Bot.notify(chat_id, %{text: "New order #42"},
+        navigate: {"View Order", "/order id=42"}
+      )
+
+  You can also pass a function for custom callback data:
+
+      Sexy.Bot.notify(chat_id, %{text: "Alert"},
+        navigate: {"Details", fn mid -> "/show mid=\#{mid}" end}
+      )
+
+  ## Options
+
+    * `:replace` — `false` (default) for overlay, `true` to replace screen
+    * `:navigate` — `{button_text, path}` or `{button_text, fn mid -> callback end}`
+    * `:dismiss_text` — custom dismiss button text (default: `"OK"`)
+    * `:extra_buttons` — additional button rows as `[[%{text: ..., callback_data: ...}]]`
   """
 
   alias Sexy.Bot.{Api, Sender, Screen}

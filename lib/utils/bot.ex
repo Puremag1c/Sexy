@@ -1,13 +1,57 @@
 defmodule Sexy.Utils.Bot do
+  @moduledoc """
+  Helpers for working with Telegram bot updates: command parsing, user/message
+  extraction, media handling, text formatting, and pagination.
+
+  ## Command parsing
+
+      iex> Sexy.Utils.Bot.parse_comand_and_query("/buy id=42-page=1")
+      {"buy", %{id: 42, page: 1}}
+
+      iex> Sexy.Utils.Bot.get_command_name("/start deep_link")
+      "start"
+
+  ## Update extraction
+
+      # Works with both message and callback_query updates
+      msg = Sexy.Utils.Bot.extract_msg(update)
+      user = Sexy.Utils.Bot.extract_user_obj(update)
+
+  ## Media detection
+
+      type = Sexy.Utils.Bot.get_message_type(update)
+      # => "text", "photo", "video", "animation", "document", etc.
+
+  ## Pagination
+
+      page_items = Sexy.Utils.Bot.paginate(all_items, 2, 10)
+      # => items 11-20
+  """
 
   alias Sexy.Utils
 
   require Logger
 
+  @doc """
+  Parse a command string into `{command_name, query_map}`.
+
+  ## Example
+
+      iex> Sexy.Utils.Bot.parse_comand_and_query("/buy id=42-amount=100")
+      {"buy", %{id: 42, amount: 100}}
+  """
   def parse_comand_and_query(string) do
     {get_command_name(string), Utils.get_query(string)}
   end
 
+  @doc """
+  Extract just the command name from a string (without `/` prefix and query).
+
+  ## Example
+
+      iex> Sexy.Utils.Bot.get_command_name("/start some_param")
+      "start"
+  """
   def get_command_name(string) do
     string
     |> String.trim("/")
@@ -15,6 +59,15 @@ defmodule Sexy.Utils.Bot do
     |> List.first()
   end
 
+  @doc """
+  Extract the message map from a Telegram update.
+
+  Works with both direct messages and callback queries:
+
+    * `%{message: msg}` → returns `msg`
+    * `%{callback_query: %{message: msg}}` → returns `msg`
+    * anything else → returns the input as-is
+  """
   def extract_msg(obj) do
     cond do
       Map.has_key?(obj, :message) -> obj.message
@@ -23,6 +76,11 @@ defmodule Sexy.Utils.Bot do
     end
   end
 
+  @doc """
+  Extract the user (`from`) map from a Telegram update.
+
+  Checks `callback_query.from`, then `message.from`, then `obj.from`.
+  """
   def extract_user_obj(obj) do
     cond do
       Map.has_key?(obj, :callback_query) -> obj.callback_query.from
@@ -31,6 +89,12 @@ defmodule Sexy.Utils.Bot do
     end
   end
 
+  @doc """
+  Detect the content type of a message.
+
+  Returns one of: `"video_note"`, `"animation"`, `"document"`, `"sticker"`,
+  `"contact"`, `"photo"`, `"audio"`, `"video"`, `"voice"`, `"text"`, `"unknown"`.
+  """
   def get_message_type(u) do
     msg = extract_msg(u)
 
@@ -49,6 +113,11 @@ defmodule Sexy.Utils.Bot do
     end
   end
 
+  @doc """
+  Wrap text in decorative `<code>` borders for Telegram HTML messages.
+
+  With one argument, wraps in lines. With a tag, wraps in the specified HTML tag.
+  """
   def wrap_text(text),
   do: "#{line()}\n\n#{text}\n\n#{line()}"
 
@@ -60,6 +129,11 @@ defmodule Sexy.Utils.Bot do
 
   defp line, do: "<code>⚙ ━━━━━━━ ⚙ ━━━━━━━━ ⚙</code>"
 
+  @doc """
+  Extract the `file_id` from a message by media type.
+
+  Supports `"video"` and `"photo"`. For photos, returns the highest-resolution version.
+  """
   def get_message_media(msg, type) do
     case type do
       "video" -> msg.video.file_id
@@ -69,6 +143,7 @@ defmodule Sexy.Utils.Bot do
 
   end
 
+  @doc "Get the `file_id` of the highest-resolution photo from a Telegram photo array."
   def get_photo_id(photo) do
     case length(photo) do
       1 ->
@@ -86,6 +161,14 @@ defmodule Sexy.Utils.Bot do
     end
   end
 
+  @doc """
+  Paginate a list by page index (1-based) and page size.
+
+  ## Example
+
+      iex> Sexy.Utils.Bot.paginate(Enum.to_list(1..50), 2, 10)
+      [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  """
   def paginate(list, page_index, size) when page_index >= 1 do
     offset = (page_index - 1) * size
     Enum.slice(list, offset, size)

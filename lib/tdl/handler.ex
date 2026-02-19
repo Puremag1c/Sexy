@@ -1,5 +1,20 @@
 defmodule Sexy.TDL.Handler do
-  @moduledoc false
+  @moduledoc """
+  GenServer that deserializes TDLib JSON into Elixir structs and forwards them to the app.
+
+  Receives raw JSON strings from `Sexy.TDL.Backend`, decodes them, and recursively
+  converts nested `@type` objects into the corresponding `Sexy.TDL.Object.*` structs.
+
+  Started automatically by `Sexy.TDL.Riser` — not called directly.
+
+  ## Event types
+
+  The handler forwards three kinds of messages to `app_pid`:
+
+    * `{:recv, struct}` — deserialized TDLib object (e.g. `%Sexy.TDL.Object.UpdateNewMessage{}`)
+    * `{:proxy_event, text}` — proxychains output lines
+    * `{:system_event, type, details}` — port failures, exits, missing proxy config
+  """
   use GenServer
 
   alias Sexy.TDL.Registry

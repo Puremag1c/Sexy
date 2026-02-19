@@ -166,26 +166,92 @@ Every chat has one active screen. `Sexy.Bot.send/1` handles the full cycle: dete
 
 ### Object struct
 
-The universal message container:
+Every message goes through `Sexy.Utils.Object` — the universal message container. Build one with `Sexy.Bot.build/1`:
 
 ```elixir
-%Sexy.Utils.Object{
-  chat_id: 123,
-  text: "Hello!",
-  media: nil,           # nil=text, "A..."=photo, "B..."=video, "C..."=animation
-  kb: %{inline_keyboard: [[%{text: "Click", callback_data: "/go"}]]},
-  entity: [],           # Telegram entities (bold, links, etc.)
-  update_data: %{},     # passed to on_message_sent as extra
-  file: nil,            # for document uploads
-  filename: nil
-}
+Sexy.Bot.build(%{chat_id: 123, text: "Hello!"})
+#=> %Sexy.Utils.Object{chat_id: 123, text: "Hello!", ...}
 ```
 
-### Notifications (Bot)
+**Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `chat_id` | integer | `nil` | Telegram chat id (**required**) |
+| `text` | string | `""` | Message text or caption (HTML supported) |
+| `media` | string/nil | `nil` | Content type selector (see table below) |
+| `kb` | map | `%{inline_keyboard: []}` | Telegram reply markup |
+| `entity` | list | `[]` | Telegram entities (bold, links, etc.). When non-empty, `parse_mode` is omitted |
+| `update_data` | map | `%{}` | App-specific data passed to `Session.on_message_sent/4` as `extra` |
+| `file` | binary/nil | `nil` | File content for document uploads |
+| `filename` | string/nil | `nil` | Filename for document uploads |
+
+**Media type detection** — the `media` field determines how the message is sent:
+
+| `media` value | Sent as | API method |
+|---------------|---------|------------|
+| `nil` | text message | `sendMessage` |
+| `"file"` | document (multipart upload) | `sendDocument` |
+| starts with `"A"` | photo | `sendPhoto` |
+| starts with `"B"` | video | `sendVideo` |
+| starts with `"C"` | animation (GIF) | `sendAnimation` |
+
+Telegram file_ids have predictable prefixes by type — Sexy uses this for auto-detection.
+
+**Examples:**
+
+```elixir
+# Text message with buttons
+%{chat_id: id, text: "Pick:", kb: %{inline_keyboard: [[%{text: "Go", callback_data: "/go"}]]}}
+
+# Photo by file_id
+%{chat_id: id, text: "Nice photo", media: "AgACAgIAAxk..."}
+
+# Document upload from binary
+%{chat_id: id, text: "Your report", media: "file", file: csv_binary, filename: "report.csv"}
+
+# Pass state to on_message_sent
+%{chat_id: id, text: "Cart", update_data: %{screen: "cart", page: 1}}
+```
+
+### `send/2` options
+
+`Sexy.Bot.send(object, opts)` sends an Object and manages the message lifecycle.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `update_mid: true` | `true` | Delete previous message, save new mid via Session |
+| `update_mid: false` | — | Send without touching the current screen state |
+
+```elixir
+# Normal send — replaces current screen (default)
+Sexy.Bot.build(%{chat_id: id, text: "Home"}) |> Sexy.Bot.send()
+
+# Send without replacing — useful for secondary messages
+Sexy.Bot.build(%{chat_id: id, text: "Tip of the day"}) |> Sexy.Bot.send(update_mid: false)
+```
+
+### Notifications
+
+`Sexy.Bot.notify(chat_id, message, opts)` sends notification messages separate from the main screen flow.
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `replace: false` | `false` | **Overlay** — sends without replacing current screen, adds dismiss button |
+| `replace: true` | — | **Replace** — becomes new active screen (mid updated via Session) |
+| `navigate: {text, path}` | `nil` | Adds a button that deletes the notification and calls `Session.handle_transit/3` |
+| `navigate: {text, fn}` | `nil` | Same, but with a function `fn mid -> callback_data end` for custom routing |
+| `dismiss_text: "text"` | `"OK"` | Custom dismiss button text |
+| `extra_buttons: [[...]]` | `[]` | Additional button rows appended after navigate/dismiss |
 
 ```elixir
 # Overlay — dismiss button, current screen untouched
 Sexy.Bot.notify(chat_id, %{text: "Done!"})
+
+# Custom dismiss text
+Sexy.Bot.notify(chat_id, %{text: "Saved!"}, dismiss_text: "Got it")
 
 # Replace — becomes new active screen
 Sexy.Bot.notify(chat_id, %{text: "Payment received!"}, replace: true)
@@ -193,6 +259,12 @@ Sexy.Bot.notify(chat_id, %{text: "Payment received!"}, replace: true)
 # Navigate — click deletes notification, calls Session.handle_transit/3
 Sexy.Bot.notify(chat_id, %{text: "New order!"},
   navigate: {"View Order", "/order id=123"}
+)
+
+# Navigate with custom callback + extra buttons
+Sexy.Bot.notify(chat_id, %{text: "Alert!"},
+  navigate: {"Details", fn mid -> "/show mid=#{mid}" end},
+  extra_buttons: [[%{text: "Mute", callback_data: "/mute"}]]
 )
 ```
 

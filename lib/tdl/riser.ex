@@ -1,5 +1,13 @@
 defmodule Sexy.TDL.Riser do
-  @moduledoc false
+  @moduledoc """
+  Per-session supervisor for a TDLib account.
+
+  Supervises `Sexy.TDL.Backend` and `Sexy.TDL.Handler` with a `:one_for_all` strategy
+  (if one crashes, both restart). Additional child specs can be injected via the
+  `:children` option in `Sexy.TDL.open/3`.
+
+  Started automatically by `Sexy.TDL` via `DynamicSupervisor` — not called directly.
+  """
   use Supervisor
 
   alias Sexy.TDL.{Backend, Handler, Registry}
