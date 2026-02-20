@@ -2,6 +2,10 @@
 
 ## 0.9.4
 
+- Add comprehensive test suite: 113 tests, 0 failures (7 test files)
+  - `mox` + `bypass` test dependencies for HTTP stubbing and behaviour mocking
+  - Pure function tests: Utils, Utils.Bot, Utils.Object, Bot.Screen
+  - Integration tests with Bypass: Bot.Api, Bot.Sender, Bot.Notification
 - Add `credo` dependency, pass `mix credo --strict` (0 issues)
 - Add 66 `@spec` annotations and `@type` definitions across 10 modules
 - Refactor `get_message_type`: 11-branch cond → `Enum.find_value` over `@message_types`

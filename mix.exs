@@ -87,7 +87,9 @@ defmodule Sexy.MixProject do
       {:jason, "~> 1.2"},
       {:base62, "~> 1.2"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:mox, "~> 1.0", only: :test},
+      {:bypass, "~> 2.1", only: :test}
     ]
   end
 end
