@@ -36,11 +36,16 @@ The Session is the bridge between Sexy and your app. It handles two things:
 defmodule MyBot.Session do
   @behaviour Sexy.Bot.Session
 
+  # Agent — простейшее key-value хранилище в памяти (map в отдельном процессе).
+  # Используется здесь для quickstart. В реальном проекте замените на БД (Ecto).
   use Agent
 
   def start_link(_), do: Agent.start_link(fn -> %{} end, name: __MODULE__)
 
   # ── Persistence ──
+  # Sexy вызывает эти два колбэка для управления "текущим сообщением" в чате:
+  # - get_message_id/1 — перед отправкой нового, чтобы удалить старое
+  # - on_message_sent/4 — после отправки, чтобы сохранить новый message_id
 
   @impl true
   def get_message_id(chat_id) do
@@ -48,7 +53,10 @@ defmodule MyBot.Session do
   end
 
   @impl true
-  def on_message_sent(chat_id, message_id, _type, _extra) do
+  def on_message_sent(chat_id, message_id, type, update_data) do
+    # type: "txt" для текстовых сообщений, "media" для фото/видео/документов
+    # update_data: map из одноимённого поля Object (ваши данные — экран, страница и т.д.)
+    #              например: %{screen: "products", page: 2}
     Agent.update(__MODULE__, &Map.put(&1, chat_id, message_id))
   end
 
