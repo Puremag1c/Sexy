@@ -138,7 +138,7 @@ defmodule Sexy.Utils.Bot do
     case type do
       "video" -> msg.video.file_id
       "photo" -> get_photo_id(msg.photo)
-      any -> Logger.debug("get_message_media: Неизвестный тип media #{any}")
+      any -> Logger.debug("get_message_media: unknown media type #{any}")
     end
   end
 

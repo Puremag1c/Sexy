@@ -54,8 +54,8 @@ defmodule MyApp.Session do
   def get_message_id(chat_id), do: MyApp.Users.get_mid(chat_id)
 
   @impl true
-  def on_message_sent(chat_id, message_id, type, extra) do
-    MyApp.Users.save_mid(chat_id, message_id, type, extra)
+  def on_message_sent(chat_id, message_id, type, update_data) do
+    MyApp.Users.save_mid(chat_id, message_id, type, update_data)
   end
 
   # Dispatch — Sexy routes updates to these callbacks
@@ -182,7 +182,7 @@ Sexy.Bot.build(%{chat_id: 123, text: "Hello!"})
 | `media` | string/nil | `nil` | Content type selector (see table below) |
 | `kb` | map | `%{inline_keyboard: []}` | Telegram reply markup |
 | `entity` | list | `[]` | Telegram entities (bold, links, etc.). When non-empty, `parse_mode` is omitted |
-| `update_data` | map | `%{}` | App-specific data passed to `Session.on_message_sent/4` as `extra` |
+| `update_data` | map | `%{}` | App-specific data passed to `Session.on_message_sent/4` |
 | `file` | binary/nil | `nil` | File content for document uploads |
 | `filename` | string/nil | `nil` | Filename for document uploads |
 
@@ -328,7 +328,7 @@ Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to
 | Callback | Required | Description |
 |----------|----------|-------------|
 | `get_message_id(chat_id)` | yes | Return current active mid |
-| `on_message_sent(chat_id, mid, type, extra)` | yes | Save new active mid |
+| `on_message_sent(chat_id, mid, type, update_data)` | yes | Save new active mid |
 | `handle_command(update)` | yes | `/command` messages |
 | `handle_query(update)` | yes | Button callbacks |
 | `handle_message(update)` | yes | Text messages |

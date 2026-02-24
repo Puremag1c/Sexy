@@ -66,7 +66,7 @@ defmodule Sexy.Bot.Poller do
   defp process_messages({:ok, []}), do: -1
 
   defp process_messages({:ok, results}) do
-    # По моему эта конструкция так и не заработала, протестировать.
+    # TODO: async_stream didn't work last time — needs testing
     # Task.async_stream(results, fn m -> process_message(m) end, maxconcurrency: 10, timeout: 200000) |> Stream.run()
 
     for el <- results, do: match_update(el)
@@ -83,7 +83,7 @@ defmodule Sexy.Bot.Poller do
   end
 
   defp process_messages(:error) do
-    Logger.log(:error, "КАКАЯ ТО ХУЙНЯ В ПОЛЛЕРЕ")
+    Logger.log(:error, "Unexpected error format in poller")
 
     -1
   end

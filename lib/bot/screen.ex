@@ -6,8 +6,8 @@ defmodule Sexy.Bot.Screen do
   to provide a clear semantic entry point in the pipeline:
 
       %{chat_id: 123, text: "Hello", kb: %{inline_keyboard: [...]}}
-      |> Sexy.Bot.Screen.build()   # => %Sexy.Utils.Object{...}
-      |> Sexy.Bot.Sender.deliver()
+      |> Sexy.Bot.build()    # => %Sexy.Utils.Object{...}
+      |> Sexy.Bot.send()
 
   Usually called via `Sexy.Bot.build/1`.
   """
@@ -19,10 +19,10 @@ defmodule Sexy.Bot.Screen do
 
   ## Examples
 
-      iex> Sexy.Bot.Screen.build(%{chat_id: 123, text: "Hi"})
+      iex> Sexy.Bot.build(%{chat_id: 123, text: "Hi"})
       %Sexy.Utils.Object{chat_id: 123, text: "Hi"}
 
-      iex> Sexy.Bot.Screen.build([%{chat_id: 1, text: "A"}, %{chat_id: 2, text: "B"}])
+      iex> Sexy.Bot.build([%{chat_id: 1, text: "A"}, %{chat_id: 2, text: "B"}])
       [%Sexy.Utils.Object{chat_id: 1, text: "A"}, %Sexy.Utils.Object{chat_id: 2, text: "B"}]
   """
   @spec build([map()]) :: [Sexy.Utils.Object.t()]

@@ -22,11 +22,11 @@ defmodule Sexy.Bot.Session do
         end
 
         @impl true
-        def on_message_sent(chat_id, message_id, _type, extra) do
+        def on_message_sent(chat_id, message_id, _type, update_data) do
           user = MyApp.Repo.get_by!(MyApp.User, chat_id: chat_id)
           MyApp.Repo.update!(Ecto.Changeset.change(user, %{
             message_id: message_id,
-            screen: Map.get(extra, :screen)
+            screen: Map.get(update_data, :screen)
           }))
         end
 
@@ -94,14 +94,14 @@ defmodule Sexy.Bot.Session do
     * `chat_id` — Telegram chat id
     * `message_id` — new message id from the Telegram response
     * `type` — `"txt"` for text messages, `"media"` for everything else
-    * `extra` — the `update_data` map from the Object (app-specific data like
+    * `update_data` — the `update_data` map from the Object (app-specific data like
       screen name, selected city, current page, etc.)
   """
   @callback on_message_sent(
               chat_id :: integer(),
               message_id :: integer(),
               type :: String.t(),
-              extra :: map()
+              update_data :: map()
             ) :: any()
 
   # ── Dispatch ─────────────────────────────────────────────────
