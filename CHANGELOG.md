@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.5
+
+- Rewrite `bot-quickstart.md` for beginners: add intro (single-message UI concept),
+  BotFather step, split Session into 3 blocks (Storage, Dispatch, Screens),
+  explain update structure, callback_query, inline_keyboard layout, answer_callback,
+  add "How it works" flow diagram
+- Replace all Russian comments and log messages with English
+- Rename `extra` → `update_data` in Session callback definition, docs, and examples
+  for consistency with `Sexy.Utils.Object.update_data` field
+- Fix Screen module examples to use `Sexy.Bot.build/send` (public API) instead of
+  `Sexy.Bot.Screen.build` / `Sexy.Bot.Sender.deliver` (internal modules)
+
 ## 0.9.4
 
 - Add comprehensive test suite: 113 tests, 0 failures (7 test files)
