@@ -96,8 +96,12 @@ tells you what happened:
 |---|---|---|
 | `message` (text starts with `/`) | User sent a command | `handle_command/1` |
 | `message` (otherwise) | User sent a regular message | `handle_message/1` |
+| `message` (with `successful_payment`) | Payment completed | `handle_successful_payment/1` * |
 | `callback_query` | User pressed an inline button | `handle_query/1` |
+| `pre_checkout_query` | Payment pre-checkout | `handle_pre_checkout/1` * |
 | `my_chat_member` | User blocked/unblocked the bot | `handle_chat_member/1` |
+
+\* Optional — see [Accepting Payments](#accepting-payments-telegram-stars) below.
 
 Here is what a command update looks like (simplified):
 
@@ -430,8 +434,86 @@ Sexy.Bot.notify(chat_id, %{text: "New message from Alice"},
 )
 ```
 
+## Accepting Payments (Telegram Stars)
+
+Sexy has built-in support for Telegram Stars payments. Here is the full flow:
+
+### 1. Send an invoice
+
+```elixir
+defp show_buy(chat_id) do
+  Sexy.Bot.send_invoice(
+    chat_id,
+    "Premium Access",           # title
+    "Unlock all features",      # description
+    "premium_#{chat_id}",       # payload (your internal id)
+    "XTR",                      # currency (XTR = Stars)
+    [%{label: "Premium", amount: 100}]  # price list
+  )
+end
+```
+
+The user sees a payment card in the chat. When they tap "Pay", Telegram
+sends a `pre_checkout_query` to your bot.
+
+### 2. Approve the checkout (optional)
+
+By default Sexy **auto-approves** every pre-checkout. If you need validation
+(check inventory, verify payload, etc.), add the optional callback to your Session:
+
+```elixir
+@impl true
+def handle_pre_checkout(update) do
+  query = update.pre_checkout_query
+  # Validate and approve:
+  Sexy.Bot.answer_pre_checkout(query.id)
+end
+```
+
+If you do not implement this callback, Sexy calls `answer_pre_checkout`
+automatically so the payment is not cancelled by Telegram's 10-second timeout.
+
+### 3. Handle successful payment
+
+After the charge goes through, Telegram sends a message with `successful_payment`.
+Implement the optional callback:
+
+```elixir
+@impl true
+def handle_successful_payment(update) do
+  payment = update.message.successful_payment
+  chat_id = update.message.chat.id
+
+  # payment.telegram_payment_charge_id — save this for refunds
+  # payment.total_amount — amount in Stars
+  # payment.invoice_payload — your payload string
+
+  MyApp.Payments.activate(chat_id, payment)
+  show_home(chat_id)
+end
+```
+
+If you do not implement this callback, Sexy just logs the event.
+
+### 4. Refund (if needed)
+
+```elixir
+Sexy.Bot.refund_star_payment(user_id, telegram_payment_charge_id)
+```
+
+### Payment update routing
+
+| Update | Session callback | Default if not implemented |
+|---|---|---|
+| `pre_checkout_query` | `handle_pre_checkout/1` | Auto-approve (`ok: true`) |
+| `message` with `successful_payment` | `handle_successful_payment/1` | Log and ignore |
+
+Both callbacks are optional. The pre-checkout default ensures payments are never
+silently cancelled because your bot forgot to respond.
+
+---
+
 ## Next steps
 
-- Accept **payments**: `Sexy.Bot.send_invoice/6` for Telegram Stars
 - Use `Sexy.Utils.Bot.paginate/3` for paginated lists
 - Use `Sexy.Utils.Bot.get_message_type/1` to detect incoming media type

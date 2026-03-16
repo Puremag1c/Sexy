@@ -268,6 +268,54 @@ Sexy.Bot.notify(chat_id, %{text: "Alert!"},
 )
 ```
 
+### Payments (Telegram Stars)
+
+Sexy supports Telegram Stars payments out of the box.
+
+**1. Send an invoice:**
+
+```elixir
+Sexy.Bot.send_invoice(chat_id, "Premium Access", "Unlock all features", "premium_123", "XTR", [
+  %{label: "Premium Access", amount: 100}
+])
+```
+
+- `currency` must be `"XTR"` for Stars
+- `prices` is a list of `%{label, amount}` maps
+
+**2. Handle the payment flow:**
+
+When a user confirms payment, Telegram sends a `pre_checkout_query`. By default Sexy auto-approves it. To add validation, implement the optional callback:
+
+```elixir
+@impl true
+def handle_pre_checkout(update) do
+  query = update.pre_checkout_query
+  # validate payload, check inventory, etc.
+  Sexy.Bot.answer_pre_checkout(query.id)
+end
+```
+
+After payment succeeds, Telegram sends a message with `successful_payment`. Implement the optional callback to process it:
+
+```elixir
+@impl true
+def handle_successful_payment(update) do
+  payment = update.message.successful_payment
+  chat_id = update.message.chat.id
+  # payment.telegram_payment_charge_id — for refunds
+  # payment.total_amount — amount in Stars
+  # payment.invoice_payload — your payload string
+  MyApp.Payments.activate(chat_id, payment)
+end
+```
+
+**3. Refund (if needed):**
+
+```elixir
+Sexy.Bot.refund_star_payment(user_id, telegram_payment_charge_id)
+```
+
 ### TDL supervision tree
 
 ```
@@ -312,6 +360,8 @@ Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to
 | `delete_message(chat_id, mid)` | Delete message |
 | `answer_callback(id, text, alert)` | Answer callback query |
 | `send_invoice(chat_id, title, desc, payload, cur, prices)` | Telegram Stars payment |
+| `answer_pre_checkout(pre_checkout_query_id)` | Approve pre-checkout query |
+| `refund_star_payment(user_id, charge_id)` | Refund a Stars payment |
 | `request(body, method)` | Any Telegram Bot API method |
 
 ### Sexy.TDL
@@ -335,6 +385,8 @@ Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to
 | `handle_chat_member(update)` | yes | Join/leave events |
 | `handle_poll(update)` | no | Poll responses |
 | `handle_transit(chat_id, cmd, query)` | no | Transit button clicks |
+| `handle_pre_checkout(update)` | no | Payment pre-checkout (auto-approved if missing) |
+| `handle_successful_payment(update)` | no | Successful payment notification |
 
 ---
 
