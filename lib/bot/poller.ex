@@ -14,6 +14,8 @@ defmodule Sexy.Bot.Poller do
   | `callback_query` | data starts with `/_delete` | built-in: deletes the message |
   | `callback_query` | data starts with `/_transit` | built-in: deletes + `handle_transit/3` |
   | `callback_query` | otherwise | `handle_query/1` |
+  | `message` | has `successful_payment` | `handle_successful_payment/1` |
+  | `pre_checkout_query` | — | `handle_pre_checkout/1` |
   | `poll` | — | `handle_poll/1` |
   | `my_chat_member` | — | `handle_chat_member/1` |
 
@@ -88,6 +90,9 @@ defmodule Sexy.Bot.Poller do
     -1
   end
 
+  defp match_update(%{message: %{successful_payment: _}} = u),
+    do: Task.start(fn -> apply_successful_payment(u) end)
+
   defp match_update(%{message: message} = u) do
     if Map.has_key?(message, :text) and String.first(u.message.text) == "/",
       do: Task.start(fn -> apply_command(u) end),
@@ -106,6 +111,9 @@ defmodule Sexy.Bot.Poller do
         Task.start(fn -> apply_query(u) end)
     end
   end
+
+  defp match_update(%{pre_checkout_query: _} = u),
+    do: Task.start(fn -> apply_pre_checkout(u) end)
 
   defp match_update(%{poll: _poll} = u),
     do: Task.start(fn -> apply_poll(u) end)
@@ -138,4 +146,20 @@ defmodule Sexy.Bot.Poller do
   def apply_query(u), do: session().handle_query(u)
   def apply_poll(u), do: session().handle_poll(u)
   def apply_chat_member(u), do: session().handle_chat_member(u)
+
+  def apply_pre_checkout(u) do
+    if function_exported?(session(), :handle_pre_checkout, 1) do
+      session().handle_pre_checkout(u)
+    else
+      Api.answer_pre_checkout(u.pre_checkout_query.id)
+    end
+  end
+
+  def apply_successful_payment(u) do
+    if function_exported?(session(), :handle_successful_payment, 1) do
+      session().handle_successful_payment(u)
+    else
+      Logger.info("Received successful_payment, no handler defined")
+    end
+  end
 end

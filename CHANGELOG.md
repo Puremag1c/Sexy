@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.6
+
+- Add Telegram Payments (Stars) support in Poller and Session:
+  - Route `pre_checkout_query` updates to `handle_pre_checkout/1` callback
+  - Route `successful_payment` messages to `handle_successful_payment/1` callback
+  - Both callbacks are optional: pre_checkout auto-approves, successful_payment logs
+  - `successful_payment` clause placed before general `message` to ensure correct matching
+
 ## 0.9.5
 
 - Rewrite `bot-quickstart.md` for beginners: add intro (single-message UI concept),

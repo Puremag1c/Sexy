@@ -74,6 +74,8 @@ defmodule Sexy.Bot.Session do
     * `handle_poll/1` — for poll answer updates
     * `handle_transit/3` — for built-in `/_transit` navigation buttons
       (see `Sexy.Bot.Notification`)
+    * `handle_pre_checkout/1` — for payment pre-checkout queries (auto-approved if not implemented)
+    * `handle_successful_payment/1` — for successful payment notifications (logged if not implemented)
   """
 
   # ── Persistence ──────────────────────────────────────────────
@@ -138,5 +140,25 @@ defmodule Sexy.Bot.Session do
   """
   @callback handle_transit(chat_id :: integer(), command :: String.t(), query :: map()) :: any()
 
-  @optional_callbacks [handle_poll: 1, handle_transit: 3]
+  @doc """
+  Handle pre-checkout queries for Telegram Payments (Stars).
+
+  Called when a user confirms a payment but before the charge is finalized.
+  You must respond within 10 seconds or Telegram cancels the payment.
+
+  Optional — if not implemented, Sexy auto-approves with `ok: true`.
+  """
+  @callback handle_pre_checkout(update :: map()) :: any()
+
+  @doc """
+  Handle successful payment notifications.
+
+  Called when a payment is completed. The update contains
+  `update.message.successful_payment` with payment details.
+
+  Optional — if not implemented, the event is logged and ignored.
+  """
+  @callback handle_successful_payment(update :: map()) :: any()
+
+  @optional_callbacks [handle_poll: 1, handle_transit: 3, handle_pre_checkout: 1, handle_successful_payment: 1]
 end
