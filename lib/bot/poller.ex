@@ -60,6 +60,9 @@ defmodule Sexy.Bot.Poller do
     -1
   end
 
+  defp match_update(%{message: %{successful_payment: _} = _msg} = u),
+    do: Task.start(fn -> session().handle_successful_payment(u) end)
+
   defp match_update(%{message: message} = u) do
     if Map.has_key?(message, :text) and String.first(u.message.text) == "/",
       do: Task.start(fn -> apply_command(u) end),
@@ -84,6 +87,9 @@ defmodule Sexy.Bot.Poller do
 
   defp match_update(%{my_chat_member: _chat_member} = u),
     do: Task.start(fn -> apply_chat_member(u) end)
+
+  defp match_update(%{pre_checkout_query: _query} = u),
+    do: Task.start(fn -> session().handle_pre_checkout(u) end)
 
   defp match_update(u),
     do: Logger.warning("Unknown update in poller\n\n#{inspect(u, pretty: true)}")

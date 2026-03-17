@@ -32,6 +32,8 @@ defmodule Sexy.Bot.Session do
   @callback handle_message(update :: map()) :: any()
   @callback handle_chat_member(update :: map()) :: any()
   @callback handle_poll(update :: map()) :: any()
+  @callback handle_pre_checkout(update :: map()) :: any()
+  @callback handle_successful_payment(update :: map()) :: any()
 
   @doc """
   Called when user clicks a transit button (built-in /_transit route).
@@ -45,5 +47,5 @@ defmodule Sexy.Bot.Session do
   """
   @callback handle_transit(chat_id :: integer(), command :: String.t(), query :: map()) :: any()
 
-  @optional_callbacks [handle_poll: 1, handle_transit: 3]
+  @optional_callbacks [handle_poll: 1, handle_transit: 3, handle_pre_checkout: 1, handle_successful_payment: 1]
 end
