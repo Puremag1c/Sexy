@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.7
+
+- Fix `Sexy.TDL.Registry`: add missing client process pid fields to defstruct
+  (`sorter_pid`, `updater_pid`, `sender_pid`, `answerer_pid`, `reactor_pid`, `direct_pid`)
+
 ## 0.9.6
 
 - Add Telegram Payments (Stars) support in Poller and Session:

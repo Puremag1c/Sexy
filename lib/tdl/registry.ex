@@ -17,6 +17,12 @@ defmodule Sexy.TDL.Registry do
     * `:handler_pid` — Handler GenServer pid
     * `:app_pid` — target process for events
     * `:encryption_key` — database encryption key
+    * `:sorter_pid` — Sorter process pid
+    * `:updater_pid` — Updater process pid
+    * `:sender_pid` — Sender process pid
+    * `:answerer_pid` — Answerer process pid
+    * `:reactor_pid` — Reactor process pid
+    * `:direct_pid` — Direct process pid
   """
   use GenServer
 
@@ -27,7 +33,14 @@ defmodule Sexy.TDL.Registry do
     :backend_pid,
     :handler_pid,
     :app_pid,
-    :encryption_key
+    :encryption_key,
+    # Client process pids
+    :sorter_pid,
+    :updater_pid,
+    :sender_pid,
+    :answerer_pid,
+    :reactor_pid,
+    :direct_pid
   ]
 
   @type t :: %__MODULE__{}
