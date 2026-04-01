@@ -1,4 +1,5 @@
 <p align="center">
+  <a href="https://hex.pm/packages/sexy"><img src="https://img.shields.io/hexpm/v/sexy?style=flat-square&color=blueviolet" alt="Hex.pm" /></a>
   <img src="https://img.shields.io/badge/elixir-%3E%3D%201.14-blueviolet?style=flat-square" />
   <img src="https://img.shields.io/badge/telegram-bot%20api%20%2B%20tdlib-26A5E4?style=flat-square&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
