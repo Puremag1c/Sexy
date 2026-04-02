@@ -63,6 +63,14 @@ See `Supervisor`.
 @spec get(String.t(), atom()) :: term() | nil
 ```
 
+# `get_worker`
+
+```elixir
+@spec get_worker(String.t(), atom()) :: pid() | nil
+```
+
+Look up a worker PID by session and role. Returns `nil` if not found or dead.
+
 # `init`
 
 # `list`
@@ -70,6 +78,26 @@ See `Supervisor`.
 ```elixir
 @spec list() :: [{String.t(), t()}]
 ```
+
+# `list_workers`
+
+```elixir
+@spec list_workers(String.t()) :: [{atom(), pid()}]
+```
+
+List all registered workers for a session as `[{role, pid}]`.
+
+# `register_worker`
+
+```elixir
+@spec register_worker(String.t(), atom()) ::
+  {:ok, pid()} | {:error, {:already_registered, pid()}}
+```
+
+Register the calling process as a worker for the given session.
+
+    # In your worker's init/1:
+    Sexy.TDL.Registry.register_worker(session_name, :sorter)
 
 # `set`
 
@@ -84,33 +112,6 @@ See `Supervisor`.
 ```elixir
 @spec update(String.t(), keyword() | map()) :: true | false
 ```
-
-# `register_worker`
-
-```elixir
-@spec register_worker(String.t(), atom()) :: {:ok, pid()} | {:error, {:already_registered, pid()}}
-```
-
-Register the calling process as a worker for the given session.
-
-    # In your worker's init/1:
-    Sexy.TDL.Registry.register_worker(session_name, :sorter)
-
-# `get_worker`
-
-```elixir
-@spec get_worker(String.t(), atom()) :: pid() | nil
-```
-
-Look up a worker PID by session and role. Returns `nil` if not found or dead.
-
-# `list_workers`
-
-```elixir
-@spec list_workers(String.t()) :: [{atom(), pid()}]
-```
-
-List all registered workers for a session as `[{role, pid}]`.
 
 ---
 
