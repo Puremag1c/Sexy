@@ -1,8 +1,15 @@
 # Changelog
 
+## 0.9.8
+
+- Replace individual `*_pid` fields in `Sexy.TDL.Registry` with Elixir `Registry`-backed
+  worker discovery (`Sexy.TDL.Workers`). Workers auto-unregister on death — no stale PIDs.
+  New API: `register_worker/2`, `get_worker/2`, `list_workers/1`
+- Add `Sexy.TDL.Workers` (Elixir Registry, `:unique` keys) to supervision tree
+
 ## 0.9.7
 
-- Fix `Sexy.TDL.Registry`: add missing client process pid fields to defstruct
+- Add client process pid fields to `Sexy.TDL.Registry` defstruct
   (`sorter_pid`, `updater_pid`, `sender_pid`, `answerer_pid`, `reactor_pid`, `direct_pid`)
 
 ## 0.9.6

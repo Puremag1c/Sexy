@@ -17,12 +17,12 @@ defmodule Sexy.TDL.Registry do
     * `:handler_pid` — Handler GenServer pid
     * `:app_pid` — target process for events
     * `:encryption_key` — database encryption key
-    * `:sorter_pid` — Sorter process pid
-    * `:updater_pid` — Updater process pid
-    * `:sender_pid` — Sender process pid
-    * `:answerer_pid` — Answerer process pid
-    * `:reactor_pid` — Reactor process pid
-    * `:direct_pid` — Direct process pid
+
+  ## Worker discovery
+
+  Client workers (Sorter, Updater, Sender, etc.) register via `Sexy.TDL.Workers`
+  (Elixir `Registry`). Use `register_worker/2`, `get_worker/2`, `list_workers/1`
+  for discovery. Workers auto-unregister when they die — no stale PIDs.
   """
   use GenServer
 
@@ -33,14 +33,7 @@ defmodule Sexy.TDL.Registry do
     :backend_pid,
     :handler_pid,
     :app_pid,
-    :encryption_key,
-    # Client process pids
-    :sorter_pid,
-    :updater_pid,
-    :sender_pid,
-    :answerer_pid,
-    :reactor_pid,
-    :direct_pid
+    :encryption_key
   ]
 
   @type t :: %__MODULE__{}
@@ -92,6 +85,36 @@ defmodule Sexy.TDL.Registry do
   @spec list() :: [{String.t(), t()}]
   def list do
     :ets.tab2list(@name)
+  end
+
+  # Worker discovery (delegates to Sexy.TDL.Workers registry)
+
+  @doc """
+  Register the calling process as a worker for the given session.
+
+      # In your worker's init/1:
+      Sexy.TDL.Registry.register_worker(session_name, :sorter)
+  """
+  @spec register_worker(String.t(), atom()) :: {:ok, pid()} | {:error, {:already_registered, pid()}}
+  def register_worker(session_name, role) do
+    Elixir.Registry.register(Sexy.TDL.Workers, {session_name, role}, nil)
+  end
+
+  @doc "Look up a worker PID by session and role. Returns `nil` if not found or dead."
+  @spec get_worker(String.t(), atom()) :: pid() | nil
+  def get_worker(session_name, role) do
+    case Elixir.Registry.lookup(Sexy.TDL.Workers, {session_name, role}) do
+      [{pid, _}] -> pid
+      [] -> nil
+    end
+  end
+
+  @doc "List all registered workers for a session as `[{role, pid}]`."
+  @spec list_workers(String.t()) :: [{atom(), pid()}]
+  def list_workers(session_name) do
+    Elixir.Registry.select(Sexy.TDL.Workers, [
+      {{{session_name, :"$1"}, :"$2", :_}, [], [{{:"$1", :"$2"}}]}
+    ])
   end
 
   # Server callbacks

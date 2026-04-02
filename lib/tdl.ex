@@ -63,11 +63,26 @@ defmodule Sexy.TDL do
 
       Sexy.TDL (Supervisor)
         ├── Registry (ETS session storage)
+        ├── Workers (Elixir Registry for client worker discovery)
         └── AccountVisor (DynamicSupervisor)
               └── Riser per session (one_for_all)
                     ├── Backend (Port to tdlib_json_cli)
                     ├── Handler (JSON → Elixir structs)
                     └── ...your extra children
+
+  ## Worker discovery
+
+  Client workers register themselves via `Sexy.TDL.Registry.register_worker/2`
+  (backed by Elixir `Registry`). Workers auto-unregister when they die.
+
+      # In worker init:
+      Sexy.TDL.Registry.register_worker(session_name, :sorter)
+
+      # Lookup:
+      Sexy.TDL.Registry.get_worker(session_name, :sorter)
+
+      # List all workers for a session:
+      Sexy.TDL.Registry.list_workers(session_name)
 
   ## Auto-generated types
 
@@ -187,6 +202,7 @@ defmodule Sexy.TDL do
   def init(_opts) do
     children = [
       Registry,
+      {Elixir.Registry, keys: :unique, name: Sexy.TDL.Workers},
       {DynamicSupervisor, name: Sexy.TDL.AccountVisor, strategy: :one_for_one}
     ]
 
