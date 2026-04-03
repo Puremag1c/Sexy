@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.9
+
+- Fix `send_document` badarg when sending binary content as multipart.
+  HTTPoison was interpreting `{:file, binary, ...}` as a file path instead of raw content.
+
 ## 0.9.8
 
 - Replace individual `*_pid` fields in `Sexy.TDL.Registry` with Elixir `Registry`-backed
