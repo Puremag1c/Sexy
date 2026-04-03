@@ -123,7 +123,7 @@ defmodule Sexy.Bot.Api do
   @spec send_document(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
   def send_document(chat_id, file, filename, text, reply_markup) do
     body = [
-      {:file, file, {"form-data", [{"name", "document"}, {"filename", filename}]}, []},
+      {file, {"form-data", [{"name", "document"}, {"filename", filename}]}, []},
       {"chat_id", to_string(chat_id)},
       {"caption", text},
       {"reply_markup", reply_markup},
