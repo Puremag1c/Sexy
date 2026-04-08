@@ -4,6 +4,7 @@
 
 - Add delayed deletion: `delete_message(chat_id, mid, after: seconds)`.
   Runs asynchronously via `Task` — accepts integers and floats.
+- Add `after: seconds` option to `notify/3` for auto-deleting notifications.
 
 ## 0.9.9
 

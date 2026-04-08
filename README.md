@@ -246,6 +246,7 @@ Sexy.Bot.build(%{chat_id: id, text: "Tip of the day"}) |> Sexy.Bot.send(update_m
 | `navigate: {text, fn}` | `nil` | Same, but with a function `fn mid -> callback_data end` for custom routing |
 | `dismiss_text: "text"` | `"OK"` | Custom dismiss button text |
 | `extra_buttons: [[...]]` | `[]` | Additional button rows appended after navigate/dismiss |
+| `after: seconds` | `nil` | Auto-delete notification after N seconds |
 
 ```elixir
 # Overlay — dismiss button, current screen untouched
@@ -267,6 +268,9 @@ Sexy.Bot.notify(chat_id, %{text: "Alert!"},
   navigate: {"Details", fn mid -> "/show mid=#{mid}" end},
   extra_buttons: [[%{text: "Mute", callback_data: "/mute"}]]
 )
+
+# Auto-delete after 3 seconds
+Sexy.Bot.notify(chat_id, %{text: "Saved!"}, after: 3)
 ```
 
 ### Payments (Telegram Stars)

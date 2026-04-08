@@ -40,6 +40,7 @@ defmodule Sexy.Bot.Notification do
     * `:navigate` — `{button_text, path}` or `{button_text, fn mid -> callback end}`
     * `:dismiss_text` — custom dismiss button text (default: `"OK"`)
     * `:extra_buttons` — additional button rows as `[[%{text: ..., callback_data: ...}]]`
+    * `:after` — auto-delete the notification after N seconds (integer or float)
   """
 
   alias Sexy.Bot.{Api, Screen, Sender}
@@ -57,6 +58,7 @@ defmodule Sexy.Bot.Notification do
     - `replace: true` — replaces current screen, no dismiss
     - `extra_buttons: [[%{text: ..., ...}]]` — extra button rows appended after navigate/dismiss
     - `dismiss_text: "text"` — custom dismiss button text
+    - `after: seconds` — auto-delete the notification after delay
   """
   @type navigate_opt :: {String.t(), String.t()} | {String.t(), (integer() -> String.t())}
 
@@ -65,6 +67,7 @@ defmodule Sexy.Bot.Notification do
           | {:navigate, navigate_opt()}
           | {:dismiss_text, String.t()}
           | {:extra_buttons, [[map()]]}
+          | {:after, number()}
 
   @spec notify(integer(), map(), [notify_opt()]) :: map()
   def notify(chat_id, message, opts \\ []) do
@@ -82,6 +85,7 @@ defmodule Sexy.Bot.Notification do
         mid = response["result"]["message_id"]
         buttons = build_buttons(chat_id, mid, opts)
         edit_buttons(chat_id, mid, buttons)
+        maybe_schedule_delete(chat_id, mid, opts)
 
       _ ->
         Logger.warning("Sexy.Bot.Notification | send failed: #{inspect(response)}")
@@ -138,6 +142,13 @@ defmodule Sexy.Bot.Notification do
       end
 
     "/_transit mid=#{mid}-cmd=#{cmd}#{query_part}"
+  end
+
+  defp maybe_schedule_delete(chat_id, mid, opts) do
+    case Keyword.get(opts, :after) do
+      nil -> :ok
+      seconds when is_number(seconds) -> Api.delete_message(chat_id, mid, after: seconds)
+    end
   end
 
   defp default_dismiss_text, do: "OK"
