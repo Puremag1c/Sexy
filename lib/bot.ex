@@ -135,6 +135,13 @@ defmodule Sexy.Bot do
   Send a notification message with optional dismiss/navigate buttons.
 
   See `Sexy.Bot.Notification` for full option details.
+
+  ## Examples
+
+      Sexy.Bot.notify(chat_id, %{text: "Done!"})
+      Sexy.Bot.notify(chat_id, %{text: "Saved!"}, after: 3)
+      Sexy.Bot.notify(chat_id, %{text: "Order!"}, navigate: {"View", "/order"}, after: 10)
+
   """
   @spec notify(integer(), map(), keyword()) :: tg_response()
   def notify(chat_id, msg, opts \\ []), do: Notification.notify(chat_id, msg, opts)
