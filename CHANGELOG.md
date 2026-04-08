@@ -1,11 +1,14 @@
 # Changelog
 
+## 0.9.10
+
+- Add delayed deletion: `delete_message(chat_id, mid, after: seconds)`.
+  Runs asynchronously via `Task` — accepts integers and floats.
+
 ## 0.9.9
 
 - Fix `send_document` badarg when sending binary content as multipart.
   HTTPoison was interpreting `{:file, binary, ...}` as a file path instead of raw content.
-- Add delayed deletion: `delete_message(chat_id, mid, after: seconds)`.
-  Runs asynchronously via `Task` — accepts integers and floats.
 
 ## 0.9.8
 
