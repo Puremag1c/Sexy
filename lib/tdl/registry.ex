@@ -95,7 +95,8 @@ defmodule Sexy.TDL.Registry do
       # In your worker's init/1:
       Sexy.TDL.Registry.register_worker(session_name, :sorter)
   """
-  @spec register_worker(String.t(), atom()) :: {:ok, pid()} | {:error, {:already_registered, pid()}}
+  @spec register_worker(String.t(), atom()) ::
+          {:ok, pid()} | {:error, {:already_registered, pid()}}
   def register_worker(session_name, role) do
     Elixir.Registry.register(Sexy.TDL.Workers, {session_name, role}, nil)
   end

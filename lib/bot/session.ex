@@ -160,5 +160,10 @@ defmodule Sexy.Bot.Session do
   """
   @callback handle_successful_payment(update :: map()) :: any()
 
-  @optional_callbacks [handle_poll: 1, handle_transit: 3, handle_pre_checkout: 1, handle_successful_payment: 1]
+  @optional_callbacks [
+    handle_poll: 1,
+    handle_transit: 3,
+    handle_pre_checkout: 1,
+    handle_successful_payment: 1
+  ]
 end
