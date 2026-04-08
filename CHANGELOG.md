@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.12
+
+- Fix `send_document` multipart format for hackney 1.25.0.
+  Use standard 4-tuple `{"document", binary, disposition, []}` instead of `{binary, disposition, []}`.
+
 ## 0.9.11
 
 - Add `after: seconds` option to `notify/3` for auto-deleting notifications.
