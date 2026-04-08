@@ -358,7 +358,7 @@ Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to
 | `send_document(chat_id, file, name, text, kb)` | Send file |
 | `edit_text(body)` | Edit message text |
 | `edit_reply_markup(body)` | Edit buttons |
-| `delete_message(chat_id, mid)` | Delete message |
+| `delete_message(chat_id, mid, opts)` | Delete message. `after: seconds` for delayed deletion |
 | `answer_callback(id, text, alert)` | Answer callback query |
 | `send_invoice(chat_id, title, desc, payload, cur, prices)` | Telegram Stars payment |
 | `answer_pre_checkout(pre_checkout_query_id)` | Approve pre-checkout query |

@@ -181,10 +181,39 @@ defmodule Sexy.Bot.Api do
 
   # ── Delete Messages ────────────────────────────────────────────
 
-  @spec delete_message(integer(), integer()) :: tg_response()
-  def delete_message(chat_id, message_id) do
-    Jason.encode!(%{chat_id: chat_id, message_id: message_id})
-    |> then(&do_request("deleteMessage", &1))
+  @doc """
+  Delete a message from a chat.
+
+  ## Options
+
+    * `:after` — delay in seconds before deleting. Accepts integers and floats.
+      When provided, deletion runs asynchronously in a background task.
+
+  ## Examples
+
+      # Immediate deletion
+      delete_message(chat_id, message_id)
+
+      # Delete after 5 seconds
+      delete_message(chat_id, message_id, after: 5)
+
+      # Delete after half a second
+      delete_message(chat_id, message_id, after: 0.5)
+
+  """
+  @spec delete_message(integer(), integer(), keyword()) :: tg_response() | {:ok, pid()}
+  def delete_message(chat_id, message_id, opts \\ []) do
+    case Keyword.get(opts, :after) do
+      nil ->
+        Jason.encode!(%{chat_id: chat_id, message_id: message_id})
+        |> then(&do_request("deleteMessage", &1))
+
+      seconds when is_number(seconds) ->
+        Task.start(fn ->
+          Process.sleep(trunc(seconds * 1000))
+          delete_message(chat_id, message_id)
+        end)
+    end
   end
 
   # ── Callback Queries ───────────────────────────────────────────

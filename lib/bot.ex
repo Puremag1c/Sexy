@@ -196,8 +196,16 @@ defmodule Sexy.Bot do
   @doc "Edit message media. Body is a JSON-encoded string."
   defdelegate edit_media(body), to: Sexy.Bot.Api
 
-  @doc "Delete a message by chat_id and message_id."
-  defdelegate delete_message(chat_id, message_id), to: Sexy.Bot.Api
+  @doc """
+  Delete a message. Pass `after: seconds` to delay deletion.
+
+  ## Examples
+
+      Sexy.Bot.delete_message(chat_id, mid)
+      Sexy.Bot.delete_message(chat_id, mid, after: 5)
+
+  """
+  defdelegate delete_message(chat_id, message_id, opts \\ []), to: Sexy.Bot.Api
 
   @doc "Answer a callback query with text and optional alert popup."
   defdelegate answer_callback(callback_id, text, alert), to: Sexy.Bot.Api
