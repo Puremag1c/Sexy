@@ -15,13 +15,16 @@ defmodule Sexy.Bot.Sender do
 
   ## Content type detection
 
-  | `Object.media` value | Type | API method |
+  | Object field | Type | API method |
   |---|---|---|
-  | `nil` | text | `sendMessage` |
-  | `"file"` | document | `sendDocument` (multipart) |
-  | starts with `"A"` | photo | `sendPhoto` |
-  | starts with `"B"` | video | `sendVideo` |
-  | starts with `"C"` | animation | `sendAnimation` |
+  | `media: nil` | text | `sendMessage` |
+  | `upload_type: :document` (or `media: "file"`) | document | `sendDocument` (multipart) |
+  | `upload_type: :photo` | photo | `sendPhoto` (multipart) |
+  | `upload_type: :video` | video | `sendVideo` (multipart) |
+  | `upload_type: :animation` | animation | `sendAnimation` (multipart) |
+  | `media` starts with `"A"` | photo | `sendPhoto` (by file_id) |
+  | `media` starts with `"B"` | video | `sendVideo` (by file_id) |
+  | `media` starts with `"C"` | animation | `sendAnimation` (by file_id) |
   """
 
   alias Sexy.Bot.Api
@@ -84,6 +87,36 @@ defmodule Sexy.Bot.Sender do
 
   defp send_by_type("file", object, _parse, _text) do
     Api.send_document(
+      object.chat_id,
+      object.file,
+      object.filename,
+      object.text,
+      Jason.encode!(object.kb)
+    )
+  end
+
+  defp send_by_type("photo_upload", object, _parse, _text) do
+    Api.send_photo(
+      object.chat_id,
+      object.file,
+      object.filename,
+      object.text,
+      Jason.encode!(object.kb)
+    )
+  end
+
+  defp send_by_type("video_upload", object, _parse, _text) do
+    Api.send_video(
+      object.chat_id,
+      object.file,
+      object.filename,
+      object.text,
+      Jason.encode!(object.kb)
+    )
+  end
+
+  defp send_by_type("animation_upload", object, _parse, _text) do
+    Api.send_animation(
       object.chat_id,
       object.file,
       object.filename,

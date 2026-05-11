@@ -184,18 +184,23 @@ Sexy.Bot.build(%{chat_id: 123, text: "Hello!"})
 | `kb` | map | `%{inline_keyboard: []}` | Telegram reply markup |
 | `entity` | list | `[]` | Telegram entities (bold, links, etc.). When non-empty, `parse_mode` is omitted |
 | `update_data` | map | `%{}` | App-specific data passed to `Session.on_message_sent/4` |
-| `file` | binary/nil | `nil` | File content for document uploads |
-| `filename` | string/nil | `nil` | Filename for document uploads |
+| `file` | binary/string/nil | `nil` | File content (binary) or path for multipart uploads |
+| `filename` | string/nil | `nil` | Filename for multipart uploads |
+| `upload_type` | atom/nil | `nil` | `:photo`, `:video`, `:animation`, `:document` — forces multipart upload |
 
-**Media type detection** — the `media` field determines how the message is sent:
+**Content type detection** — `upload_type` wins, otherwise falls back to `media`:
 
-| `media` value | Sent as | API method |
-|---------------|---------|------------|
-| `nil` | text message | `sendMessage` |
-| `"file"` | document (multipart upload) | `sendDocument` |
-| starts with `"A"` | photo | `sendPhoto` |
-| starts with `"B"` | video | `sendVideo` |
-| starts with `"C"` | animation (GIF) | `sendAnimation` |
+| Condition | Sent as | API method |
+|-----------|---------|------------|
+| `upload_type: :photo` | photo upload | `sendPhoto` (multipart) |
+| `upload_type: :video` | video upload | `sendVideo` (multipart) |
+| `upload_type: :animation` | animation upload | `sendAnimation` (multipart) |
+| `upload_type: :document` | document upload | `sendDocument` (multipart) |
+| `media: nil` | text message | `sendMessage` |
+| `media: "file"` (legacy) | document upload | `sendDocument` (multipart) |
+| `media` starts with `"A"` | photo by file_id | `sendPhoto` |
+| `media` starts with `"B"` | video by file_id | `sendVideo` |
+| `media` starts with `"C"` | animation by file_id | `sendAnimation` |
 
 Telegram file_ids have predictable prefixes by type — Sexy uses this for auto-detection.
 
@@ -208,8 +213,10 @@ Telegram file_ids have predictable prefixes by type — Sexy uses this for auto-
 # Photo by file_id
 %{chat_id: id, text: "Nice photo", media: "AgACAgIAAxk..."}
 
-# Document upload from binary
-%{chat_id: id, text: "Your report", media: "file", file: csv_binary, filename: "report.csv"}
+# Upload from binary or path
+%{chat_id: id, text: "Your report", upload_type: :document, file: csv_binary, filename: "report.csv"}
+%{chat_id: id, text: "Look", upload_type: :photo, file: File.read!("p.jpg"), filename: "p.jpg"}
+%{chat_id: id, text: "Clip", upload_type: :video, file: "/tmp/clip.mp4", filename: "clip.mp4"}
 
 # Pass state to on_message_sent
 %{chat_id: id, text: "Cart", update_data: %{screen: "cart", page: 1}}
@@ -356,10 +363,10 @@ Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to
 | `send(object, opts)` | Send to Telegram, manage mid lifecycle |
 | `notify(chat_id, msg, opts)` | Notification with dismiss/navigate |
 | `send_message(chat_id, text)` | Send text message |
-| `send_photo(body)` | Send photo |
-| `send_video(body)` | Send video |
-| `send_animation(body)` | Send animation |
-| `send_document(chat_id, file, name, text, kb)` | Send file |
+| `send_photo(body)` / `send_photo(chat_id, file, name, text, kb)` | Send photo by file_id (JSON) or multipart upload |
+| `send_video(body)` / `send_video(chat_id, file, name, text, kb)` | Send video by file_id (JSON) or multipart upload |
+| `send_animation(body)` / `send_animation(chat_id, file, name, text, kb)` | Send animation by file_id (JSON) or multipart upload |
+| `send_document(chat_id, file, name, text, kb)` | Send document (multipart upload) |
 | `edit_text(body)` | Edit message text |
 | `edit_reply_markup(body)` | Edit buttons |
 | `delete_message(chat_id, mid, opts)` | Delete message. `after: seconds` for delayed deletion |

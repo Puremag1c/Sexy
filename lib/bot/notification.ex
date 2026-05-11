@@ -49,7 +49,8 @@ defmodule Sexy.Bot.Notification do
   @doc """
   Send a notification to a chat.
 
-  `message` is a map like `%{text: "..."}` or `%{media: "file", file: "...", filename: "..."}`.
+  `message` is a map like `%{text: "..."}` or `%{upload_type: :document, file: "...", filename: "..."}`
+  (also supports `:photo`, `:video`, `:animation`).
 
   Options:
     - `navigate: {"Button Text", "/command query"}` — transit button (auto-wraps to /_transit)

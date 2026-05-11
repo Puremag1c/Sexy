@@ -102,11 +102,50 @@ defmodule Sexy.Bot.Api do
   @spec send_photo(String.t()) :: tg_response()
   def send_photo(body), do: do_request("sendPhoto", body)
 
+  @spec send_photo(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
+  def send_photo(chat_id, file, filename, text, reply_markup) do
+    body = [
+      {"photo", file, {"form-data", [{"name", "photo"}, {"filename", filename}]}, []},
+      {"chat_id", to_string(chat_id)},
+      {"caption", text},
+      {"reply_markup", reply_markup},
+      {"parse_mode", "HTML"}
+    ]
+
+    do_multipart("sendPhoto", body)
+  end
+
   @spec send_video(String.t()) :: tg_response()
   def send_video(body), do: do_request("sendVideo", body)
 
+  @spec send_video(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
+  def send_video(chat_id, file, filename, text, reply_markup) do
+    body = [
+      {"video", file, {"form-data", [{"name", "video"}, {"filename", filename}]}, []},
+      {"chat_id", to_string(chat_id)},
+      {"caption", text},
+      {"reply_markup", reply_markup},
+      {"parse_mode", "HTML"}
+    ]
+
+    do_multipart("sendVideo", body)
+  end
+
   @spec send_animation(String.t()) :: tg_response()
   def send_animation(body), do: do_request("sendAnimation", body)
+
+  @spec send_animation(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
+  def send_animation(chat_id, file, filename, text, reply_markup) do
+    body = [
+      {"animation", file, {"form-data", [{"name", "animation"}, {"filename", filename}]}, []},
+      {"chat_id", to_string(chat_id)},
+      {"caption", text},
+      {"reply_markup", reply_markup},
+      {"parse_mode", "HTML"}
+    ]
+
+    do_multipart("sendAnimation", body)
+  end
 
   @spec send_poll(String.t()) :: tg_response()
   def send_poll(body), do: do_request("sendPoll", body)

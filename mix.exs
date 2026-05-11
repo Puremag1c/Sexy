@@ -1,7 +1,7 @@
 defmodule Sexy.MixProject do
   use Mix.Project
 
-  @version "0.9.12"
+  @version "0.9.13"
   @source_url "https://github.com/Puremag1c/Sexy"
 
   def project do

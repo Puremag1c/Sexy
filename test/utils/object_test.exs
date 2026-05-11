@@ -14,6 +14,7 @@ defmodule Sexy.Utils.ObjectTest do
       assert obj.update_data == %{}
       assert obj.file == nil
       assert obj.filename == nil
+      assert obj.upload_type == nil
     end
   end
 
@@ -40,6 +41,31 @@ defmodule Sexy.Utils.ObjectTest do
 
     test "media with unknown prefix → unknown" do
       assert Object.detect_object_type(%Object{media: "ZZZ"}) == "unknown"
+    end
+
+    test "upload_type :photo → photo_upload" do
+      assert Object.detect_object_type(%Object{upload_type: :photo}) == "photo_upload"
+    end
+
+    test "upload_type :video → video_upload" do
+      assert Object.detect_object_type(%Object{upload_type: :video}) == "video_upload"
+    end
+
+    test "upload_type :animation → animation_upload" do
+      assert Object.detect_object_type(%Object{upload_type: :animation}) == "animation_upload"
+    end
+
+    test "upload_type :document → file" do
+      assert Object.detect_object_type(%Object{upload_type: :document}) == "file"
+    end
+
+    test "upload_type wins over media file_id prefix" do
+      assert Object.detect_object_type(%Object{upload_type: :photo, media: "AgACAgIAA"}) ==
+               "photo_upload"
+    end
+
+    test "non-binary media does not crash → unknown" do
+      assert Object.detect_object_type(%Object{media: {:photo, "/tmp/x.jpg"}}) == "unknown"
     end
   end
 end

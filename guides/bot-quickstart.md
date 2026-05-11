@@ -324,7 +324,11 @@ The `media` field controls which Telegram API method is called:
 %{chat_id: id, media: "CgACAgIAAxk..."}
 
 # Document — upload binary with filename
-%{chat_id: id, text: "Your export", media: "file", file: File.read!("data.csv"), filename: "data.csv"}
+%{chat_id: id, text: "Your export", upload_type: :document, file: File.read!("data.csv"), filename: "data.csv"}
+
+# Photo / video / animation upload (multipart)
+%{chat_id: id, text: "Look", upload_type: :photo, file: File.read!("p.jpg"), filename: "p.jpg"}
+%{chat_id: id, text: "Clip", upload_type: :video, file: "/tmp/clip.mp4", filename: "clip.mp4"}
 ```
 
 ### Inline keyboard

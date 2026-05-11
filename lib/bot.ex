@@ -37,16 +37,29 @@ defmodule Sexy.Bot do
 
   ## Sending files
 
-  To send a document, set `media: "file"` with `file` and `filename` fields:
+  To upload a local file or binary, set `upload_type` together with `file` and `filename`.
+  Supported types: `:photo`, `:video`, `:animation`, `:document`.
 
       Sexy.Bot.build(%{
         chat_id: chat_id,
-        media: "file",
+        upload_type: :document,
         file: File.read!("report.csv"),
         filename: "report.csv",
         text: "Here is your report"
       })
       |> Sexy.Bot.send()
+
+      Sexy.Bot.build(%{
+        chat_id: chat_id,
+        upload_type: :photo,
+        file: File.read!("pic.jpg"),
+        filename: "pic.jpg",
+        text: "<b>Look</b>"
+      })
+      |> Sexy.Bot.send()
+
+  The legacy `media: "file"` sentinel still works for documents and is equivalent
+  to `upload_type: :document`.
 
   ## Notifications
 
@@ -97,7 +110,7 @@ defmodule Sexy.Bot do
   Convert a map (or list of maps) into `Sexy.Utils.Object` struct(s).
 
   Accepts any map with Object fields: `:chat_id`, `:text`, `:media`, `:kb`,
-  `:entity`, `:update_data`, `:file`, `:filename`.
+  `:entity`, `:update_data`, `:file`, `:filename`, `:upload_type`.
 
   ## Example
 
@@ -160,11 +173,26 @@ defmodule Sexy.Bot do
   @doc "Send a photo by file_id. Body is a JSON-encoded string."
   defdelegate send_photo(body), to: Sexy.Bot.Api
 
+  @doc """
+  Upload a photo as multipart. `file` is a binary or path; `kb` is a JSON-encoded reply markup.
+  """
+  defdelegate send_photo(chat_id, file, filename, text, kb), to: Sexy.Bot.Api
+
   @doc "Send a video by file_id. Body is a JSON-encoded string."
   defdelegate send_video(body), to: Sexy.Bot.Api
 
+  @doc """
+  Upload a video as multipart. `file` is a binary or path; `kb` is a JSON-encoded reply markup.
+  """
+  defdelegate send_video(chat_id, file, filename, text, kb), to: Sexy.Bot.Api
+
   @doc "Send an animation (GIF) by file_id. Body is a JSON-encoded string."
   defdelegate send_animation(body), to: Sexy.Bot.Api
+
+  @doc """
+  Upload an animation as multipart. `file` is a binary or path; `kb` is a JSON-encoded reply markup.
+  """
+  defdelegate send_animation(chat_id, file, filename, text, kb), to: Sexy.Bot.Api
 
   @doc "Send a poll. Body is a JSON-encoded string."
   defdelegate send_poll(body), to: Sexy.Bot.Api

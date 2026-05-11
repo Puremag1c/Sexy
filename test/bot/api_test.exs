@@ -74,6 +74,66 @@ defmodule Sexy.Bot.ApiTest do
     end
   end
 
+  # ── send_photo/5 ────────────────────────────────────────────
+
+  describe "send_photo/5" do
+    test "sends multipart upload to sendPhoto", %{bypass: bypass} do
+      tmp = Path.join(System.tmp_dir!(), "sexy_test_photo.jpg")
+      File.write!(tmp, "fake-jpeg-bytes")
+      on_exit(fn -> File.rm(tmp) end)
+
+      Bypass.expect_once(bypass, "POST", "/sendPhoto", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 11}}))
+      end)
+
+      result = Api.send_photo(123, tmp, "pic.jpg", "caption", "{}")
+      assert result["ok"] == true
+      assert result["result"]["message_id"] == 11
+    end
+  end
+
+  # ── send_video/5 ────────────────────────────────────────────
+
+  describe "send_video/5" do
+    test "sends multipart upload to sendVideo", %{bypass: bypass} do
+      tmp = Path.join(System.tmp_dir!(), "sexy_test_video.mp4")
+      File.write!(tmp, "fake-mp4-bytes")
+      on_exit(fn -> File.rm(tmp) end)
+
+      Bypass.expect_once(bypass, "POST", "/sendVideo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 12}}))
+      end)
+
+      result = Api.send_video(123, tmp, "clip.mp4", "caption", "{}")
+      assert result["ok"] == true
+      assert result["result"]["message_id"] == 12
+    end
+  end
+
+  # ── send_animation/5 ────────────────────────────────────────
+
+  describe "send_animation/5" do
+    test "sends multipart upload to sendAnimation", %{bypass: bypass} do
+      tmp = Path.join(System.tmp_dir!(), "sexy_test_anim.gif")
+      File.write!(tmp, "fake-gif-bytes")
+      on_exit(fn -> File.rm(tmp) end)
+
+      Bypass.expect_once(bypass, "POST", "/sendAnimation", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 13}}))
+      end)
+
+      result = Api.send_animation(123, tmp, "wave.gif", "caption", "{}")
+      assert result["ok"] == true
+      assert result["result"]["message_id"] == 13
+    end
+  end
+
   # ── delete_message/2 ────────────────────────────────────────
 
   describe "delete_message/2" do

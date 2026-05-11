@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.13
+
+- Multipart upload for photo, video and animation (parallel to `send_document`):
+  - New: `Sexy.Bot.Api.send_photo/5`, `send_video/5`, `send_animation/5`
+  - Top-level delegates: `Sexy.Bot.send_photo/5`, `send_video/5`, `send_animation/5`
+- New `Sexy.Utils.Object` field `:upload_type` (`:photo | :video | :animation | :document | nil`)
+  drives multipart uploads. Detection prefers `upload_type` over `media`.
+- `detect_object_type/1` no longer crashes when `media` is not a binary
+  (guards added; non-string media → `"unknown"`).
+- Legacy `media: "file"` sentinel still works (equivalent to `upload_type: :document`).
+
 ## 0.9.12
 
 - Fix `send_document` multipart format for hackney 1.25.0.

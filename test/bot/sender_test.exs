@@ -115,6 +115,154 @@ defmodule Sexy.Bot.SenderTest do
     end
   end
 
+  # ── Photo upload ────────────────────────────────────────────
+
+  describe "deliver/2 photo upload" do
+    test "sends multipart via sendPhoto", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/sendPhoto", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_response(120))
+      end)
+
+      Bypass.expect(bypass, "POST", "/deleteMessage", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => true}))
+      end)
+
+      Sexy.Bot.SessionMock
+      |> expect(:get_message_id, fn 123 -> 47 end)
+      |> expect(:on_message_sent, fn 123, 120, "media", %{} -> :ok end)
+
+      tmp = Path.join(System.tmp_dir!(), "sexy_sender_photo.jpg")
+      File.write!(tmp, "fake-jpeg")
+      on_exit(fn -> File.rm(tmp) end)
+
+      object = %Object{
+        chat_id: 123,
+        text: "photo caption",
+        upload_type: :photo,
+        file: tmp,
+        filename: "pic.jpg"
+      }
+
+      result = Sender.deliver(object)
+      assert result["ok"] == true
+    end
+  end
+
+  # ── Video upload ────────────────────────────────────────────
+
+  describe "deliver/2 video upload" do
+    test "sends multipart via sendVideo", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/sendVideo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_response(121))
+      end)
+
+      Bypass.expect(bypass, "POST", "/deleteMessage", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => true}))
+      end)
+
+      Sexy.Bot.SessionMock
+      |> expect(:get_message_id, fn 123 -> 46 end)
+      |> expect(:on_message_sent, fn 123, 121, "media", %{} -> :ok end)
+
+      tmp = Path.join(System.tmp_dir!(), "sexy_sender_video.mp4")
+      File.write!(tmp, "fake-mp4")
+      on_exit(fn -> File.rm(tmp) end)
+
+      object = %Object{
+        chat_id: 123,
+        text: "video caption",
+        upload_type: :video,
+        file: tmp,
+        filename: "clip.mp4"
+      }
+
+      result = Sender.deliver(object)
+      assert result["ok"] == true
+    end
+  end
+
+  # ── Animation upload ────────────────────────────────────────
+
+  describe "deliver/2 animation upload" do
+    test "sends multipart via sendAnimation", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/sendAnimation", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_response(122))
+      end)
+
+      Bypass.expect(bypass, "POST", "/deleteMessage", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => true}))
+      end)
+
+      Sexy.Bot.SessionMock
+      |> expect(:get_message_id, fn 123 -> 45 end)
+      |> expect(:on_message_sent, fn 123, 122, "media", %{} -> :ok end)
+
+      tmp = Path.join(System.tmp_dir!(), "sexy_sender_anim.gif")
+      File.write!(tmp, "fake-gif")
+      on_exit(fn -> File.rm(tmp) end)
+
+      object = %Object{
+        chat_id: 123,
+        text: "anim caption",
+        upload_type: :animation,
+        file: tmp,
+        filename: "wave.gif"
+      }
+
+      result = Sender.deliver(object)
+      assert result["ok"] == true
+    end
+  end
+
+  # ── Document upload via upload_type ─────────────────────────
+
+  describe "deliver/2 document upload via upload_type" do
+    test "upload_type: :document routes to sendDocument", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/sendDocument", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_response(123))
+      end)
+
+      Bypass.expect(bypass, "POST", "/deleteMessage", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => true}))
+      end)
+
+      Sexy.Bot.SessionMock
+      |> expect(:get_message_id, fn 123 -> 44 end)
+      |> expect(:on_message_sent, fn 123, 123, "media", %{} -> :ok end)
+
+      tmp = Path.join(System.tmp_dir!(), "sexy_sender_doc2.txt")
+      File.write!(tmp, "test file")
+      on_exit(fn -> File.rm(tmp) end)
+
+      object = %Object{
+        chat_id: 123,
+        text: "doc caption",
+        upload_type: :document,
+        file: tmp,
+        filename: "report.pdf"
+      }
+
+      result = Sender.deliver(object)
+      assert result["ok"] == true
+    end
+  end
+
   # ── update_mid: false ───────────────────────────────────────
 
   describe "deliver/2 with update_mid: false" do

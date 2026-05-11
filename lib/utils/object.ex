@@ -21,24 +21,31 @@ defmodule Sexy.Utils.Object do
   | `kb` | map | Reply markup (`%{inline_keyboard: [[...]]}`) |
   | `entity` | list | Telegram message entities (bold, links, etc.) |
   | `update_data` | map | App-specific data passed to `Session.on_message_sent/4` |
-  | `file` | binary/nil | File content for document uploads |
-  | `filename` | string/nil | Filename for document uploads |
+  | `file` | binary/string/nil | File content (binary) or path for multipart uploads |
+  | `filename` | string/nil | Filename for multipart uploads |
+  | `upload_type` | atom/nil | `:photo`, `:video`, `:animation`, `:document` — forces multipart upload |
 
   ## Media type detection
 
-  The `media` field determines how the message is sent:
+  Detection looks at `upload_type` first, then falls back to `media`:
 
-  | `media` value | Detected type | API method |
+  | Condition | Detected type | API method |
   |---|---|---|
-  | `nil` | text | `sendMessage` |
-  | `"file"` | document | `sendDocument` (multipart upload) |
-  | starts with `"A"` | photo | `sendPhoto` |
-  | starts with `"B"` | video | `sendVideo` |
-  | starts with `"C"` | animation | `sendAnimation` |
+  | `upload_type: :photo` | photo_upload | `sendPhoto` (multipart) |
+  | `upload_type: :video` | video_upload | `sendVideo` (multipart) |
+  | `upload_type: :animation` | animation_upload | `sendAnimation` (multipart) |
+  | `upload_type: :document` | file | `sendDocument` (multipart) |
+  | `media: nil` | txt | `sendMessage` |
+  | `media: "file"` (legacy) | file | `sendDocument` (multipart) |
+  | `media` starts with `"A"` | photo | `sendPhoto` (by file_id) |
+  | `media` starts with `"B"` | video | `sendVideo` (by file_id) |
+  | `media` starts with `"C"` | animation | `sendAnimation` (by file_id) |
 
   Telegram file_ids have a predictable prefix based on file type, which Sexy uses
-  for automatic detection.
+  for automatic detection. For uploading a local file or binary, set `upload_type`.
   """
+
+  @type upload_type :: :photo | :video | :animation | :document | nil
 
   @type t :: %__MODULE__{
           chat_id: integer() | nil,
@@ -48,7 +55,8 @@ defmodule Sexy.Utils.Object do
           entity: list(),
           update_data: map(),
           file: binary() | nil,
-          filename: String.t() | nil
+          filename: String.t() | nil,
+          upload_type: upload_type()
         }
 
   defstruct chat_id: nil,
@@ -58,24 +66,40 @@ defmodule Sexy.Utils.Object do
             entity: [],
             update_data: %{},
             file: nil,
-            filename: nil
+            filename: nil,
+            upload_type: nil
 
   @type object_type :: String.t()
 
   @doc """
-  Detect the content type of an Object based on its `media` field.
+  Detect the content type of an Object.
 
-  Returns one of: `"txt"`, `"file"`, `"photo"`, `"video"`, `"animation"`, `"unknown"`.
+  `upload_type` (if set) wins over `media`. Returns one of:
+  `"txt"`, `"file"`, `"photo"`, `"video"`, `"animation"`,
+  `"photo_upload"`, `"video_upload"`, `"animation_upload"`, `"unknown"`.
   """
   @spec detect_object_type(t()) :: object_type()
   def detect_object_type(obj) do
-    cond do
-      obj.media == nil -> "txt"
-      obj.media == "file" -> "file"
-      String.first(obj.media) == "A" -> "photo"
-      String.first(obj.media) == "B" -> "video"
-      String.first(obj.media) == "C" -> "animation"
-      true -> "unknown"
+    detect_upload(obj.upload_type) || detect_media(obj.media)
+  end
+
+  defp detect_upload(:photo), do: "photo_upload"
+  defp detect_upload(:video), do: "video_upload"
+  defp detect_upload(:animation), do: "animation_upload"
+  defp detect_upload(:document), do: "file"
+  defp detect_upload(nil), do: nil
+
+  defp detect_media(nil), do: "txt"
+  defp detect_media("file"), do: "file"
+
+  defp detect_media(media) when is_binary(media) do
+    case String.first(media) do
+      "A" -> "photo"
+      "B" -> "video"
+      "C" -> "animation"
+      _ -> "unknown"
     end
   end
+
+  defp detect_media(_), do: "unknown"
 end
