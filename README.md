@@ -436,10 +436,6 @@ Sexy.Utils.Object           Message struct + type detection
 
 ---
 
-## Migration
-
-Upgrading from an older version? See [MIGRATION.md](MIGRATION.md).
-
 ## License
 
 MIT
