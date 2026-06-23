@@ -44,7 +44,8 @@ defmodule Sexy.MixProject do
         "README.md": [title: "Overview"],
         "CHANGELOG.md": [title: "Changelog"],
         "guides/bot-quickstart.md": [title: "Bot Quick Start"],
-        "guides/tdl-quickstart.md": [title: "TDLib Quick Start"]
+        "guides/tdl-quickstart.md": [title: "TDLib Quick Start"],
+        "guides/tdl-reference.md": [title: "TDLib Reference"]
       ],
       filter_modules: fn module, _meta ->
         name = inspect(module)
