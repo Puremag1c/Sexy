@@ -43,7 +43,8 @@ defmodule Sexy.Bot.Notification do
     * `:after` — auto-delete the notification after N seconds (integer or float)
   """
 
-  alias Sexy.Bot.{Api, Screen, Sender}
+  alias Sexy.Bot.{Api, Sender}
+  alias Sexy.Utils.Object
   require Logger
 
   @doc """
@@ -77,7 +78,7 @@ defmodule Sexy.Bot.Notification do
     object =
       message
       |> Map.put(:chat_id, chat_id)
-      |> Screen.build()
+      |> Object.build()
 
     response = Sender.deliver(object, update_mid: replace)
 
@@ -99,7 +100,7 @@ defmodule Sexy.Bot.Notification do
     replace = Keyword.get(opts, :replace, false)
     navigate = Keyword.get(opts, :navigate, nil)
     extra_buttons = Keyword.get(opts, :extra_buttons, [])
-    dismiss_text = Keyword.get(opts, :dismiss_text, default_dismiss_text())
+    dismiss_text = Keyword.get(opts, :dismiss_text, "OK")
 
     nav_row =
       case navigate do
@@ -151,6 +152,4 @@ defmodule Sexy.Bot.Notification do
       seconds when is_number(seconds) -> Api.delete_message(chat_id, mid, after: seconds)
     end
   end
-
-  defp default_dismiss_text, do: "OK"
 end

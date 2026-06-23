@@ -85,7 +85,8 @@ defmodule Sexy.Bot do
   use Supervisor
   import Kernel, except: [send: 2]
 
-  alias Sexy.Bot.{Notification, Screen, Sender}
+  alias Sexy.Bot.{Notification, Sender}
+  alias Sexy.Utils.Object
 
   @type tg_response :: map()
 
@@ -118,7 +119,7 @@ defmodule Sexy.Bot do
       #=> %Sexy.Utils.Object{chat_id: 123, text: "Hello!", ...}
   """
   @spec build(map() | [map()]) :: Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()]
-  def build(map), do: Screen.build(map)
+  def build(map), do: Object.build(map)
 
   @doc """
   Send an Object (or list of Objects) to Telegram.

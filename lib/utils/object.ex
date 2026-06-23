@@ -72,6 +72,19 @@ defmodule Sexy.Utils.Object do
   @type object_type :: String.t()
 
   @doc """
+  Build an Object struct from a map, or a list of Objects from a list of maps.
+
+  ## Examples
+
+      iex> Sexy.Utils.Object.build(%{chat_id: 123, text: "Hi"})
+      %Sexy.Utils.Object{chat_id: 123, text: "Hi"}
+  """
+  @spec build(map()) :: t()
+  @spec build([map()]) :: [t()]
+  def build(items) when is_list(items), do: Enum.map(items, &build/1)
+  def build(map) when is_map(map), do: struct(%__MODULE__{}, map)
+
+  @doc """
   Detect the content type of an Object.
 
   `upload_type` (if set) wins over `media`. Returns one of:

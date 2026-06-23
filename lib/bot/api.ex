@@ -41,14 +41,7 @@ defmodule Sexy.Bot.Api do
     timeout = Keyword.get(opts, :timeout, 5_000)
     headers = [{"Content-Type", "application/json"}]
 
-    case HTTPoison.post(url, body, headers, recv_timeout: timeout) do
-      {:ok, response} ->
-        {:ok, decoded} = Jason.decode(response.body)
-        decoded
-
-      {:error, %{reason: reason}} ->
-        %{"ok" => false, "description" => "HTTP error: #{reason}"}
-    end
+    HTTPoison.post(url, body, headers, recv_timeout: timeout) |> decode_response()
   end
 
   defp do_multipart(method, body, opts \\ []) do
@@ -56,15 +49,13 @@ defmodule Sexy.Bot.Api do
     timeout = Keyword.get(opts, :timeout, 20_000)
     headers = [{"Content-Type", "multipart/form-data"}]
 
-    case HTTPoison.post(url, {:multipart, body}, headers, recv_timeout: timeout) do
-      {:ok, response} ->
-        {:ok, decoded} = Jason.decode(response.body)
-        decoded
-
-      {:error, %{reason: reason}} ->
-        %{"ok" => false, "description" => "HTTP error: #{reason}"}
-    end
+    HTTPoison.post(url, {:multipart, body}, headers, recv_timeout: timeout) |> decode_response()
   end
+
+  defp decode_response({:ok, response}), do: Jason.decode!(response.body)
+
+  defp decode_response({:error, %{reason: reason}}),
+    do: %{"ok" => false, "description" => "HTTP error: #{reason}"}
 
   # ── Polling ────────────────────────────────────────────────────
 
@@ -276,14 +267,7 @@ defmodule Sexy.Bot.Api do
     url = api_url() <> "/getMe"
     headers = [{"Content-Type", "application/json"}]
 
-    case HTTPoison.get(url, headers) do
-      {:ok, response} ->
-        {:ok, decoded} = Jason.decode(response.body)
-        decoded
-
-      {:error, %{reason: reason}} ->
-        %{"ok" => false, "description" => "HTTP error: #{reason}"}
-    end
+    HTTPoison.get(url, headers) |> decode_response()
   end
 
   @spec get_chat(integer()) :: tg_response()
@@ -389,14 +373,7 @@ defmodule Sexy.Bot.Api do
 
     url = "https://pay.wallet.tg/wpay/store-api/v1/order"
 
-    case HTTPoison.post(url, body, headers) do
-      {:ok, response} ->
-        {:ok, decoded} = Jason.decode(response.body)
-        decoded
-
-      {:error, %{reason: reason}} ->
-        %{"ok" => false, "description" => "HTTP error: #{reason}"}
-    end
+    HTTPoison.post(url, body, headers) |> decode_response()
   end
 
   # ── Universal ──────────────────────────────────────────────────

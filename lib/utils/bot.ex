@@ -111,22 +111,15 @@ defmodule Sexy.Utils.Bot do
   end
 
   @doc """
-  Wrap text in decorative `<code>` borders for Telegram HTML messages.
+  Wrap `text` with `wrapper` on both sides.
 
-  With one argument, wraps in lines. With a tag, wraps in the specified HTML tag.
+  ## Example
+
+      iex> Sexy.Utils.Bot.wrap_text("**", "Hello")
+      "**Hello**"
   """
-  @spec wrap_text(String.t()) :: String.t()
-  def wrap_text(text),
-    do: "#{line()}\n\n#{text}\n\n#{line()}"
-
-  @spec wrap_text(String.t(), String.t(), boolean()) :: String.t()
-  def wrap_text(text, tag, lines \\ false) do
-    if lines,
-      do: "#{line()}\n\n<#{tag}>#{text}</#{tag}>\n\n#{line()}",
-      else: "<#{tag}>#{text}</#{tag}>"
-  end
-
-  defp line, do: "<code>⚙ ━━━━━━━ ⚙ ━━━━━━━━ ⚙</code>"
+  @spec wrap_text(String.t(), String.t()) :: String.t()
+  def wrap_text(wrapper, text), do: wrapper <> text <> wrapper
 
   @doc """
   Extract the `file_id` from a message by media type.
@@ -144,25 +137,8 @@ defmodule Sexy.Utils.Bot do
 
   @doc "Get the `file_id` of the highest-resolution photo from a Telegram photo array."
   @spec get_photo_id([map()]) :: String.t()
-  def get_photo_id(photo) do
-    case length(photo) do
-      1 ->
-        [%{file_id: photo}] = photo
-        photo
-
-      2 ->
-        [_, %{file_id: photo}] = photo
-        photo
-
-      3 ->
-        [_, _, %{file_id: photo}] = photo
-        photo
-
-      4 ->
-        [_, _, _, %{file_id: photo}] = photo
-        photo
-    end
-  end
+  # ponytail: assumes a non-empty array (Telegram always sends ≥1 size)
+  def get_photo_id(photo), do: List.last(photo).file_id
 
   @doc """
   Paginate a list by page index (1-based) and page size.
@@ -179,7 +155,6 @@ defmodule Sexy.Utils.Bot do
   end
 
   def paginate(list, _page_index, size) do
-    offset = 0 * size
-    Enum.slice(list, offset, size)
+    Enum.slice(list, 0, size)
   end
 end

@@ -133,11 +133,13 @@ defmodule Sexy.TDL.Handler do
 
   defp recurse_if_typed(item, _prefix), do: item
 
+  # ponytail: titlecase_once moved to Sexy.Utils (shared with generate_types)
+
   defp match_object(json, prefix) do
     type =
       json
       |> Map.get("@type")
-      |> titlecase_once()
+      |> Sexy.Utils.titlecase_once()
 
     module = String.to_existing_atom(prefix <> type)
     empty = struct(module)
@@ -148,10 +150,5 @@ defmodule Sexy.TDL.Handler do
         :error -> acc
       end
     end)
-  end
-
-  defp titlecase_once(str) do
-    first = String.first(str)
-    String.replace_prefix(str, first, String.upcase(first))
   end
 end

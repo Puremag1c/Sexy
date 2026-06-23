@@ -126,32 +126,11 @@ defmodule Sexy.Utils.BotTest do
     end
   end
 
-  # ── wrap_text/1 and wrap_text/3 ─────────────────────────────
+  # ── wrap_text/2 ─────────────────────────────────────────────
 
-  describe "wrap_text/1" do
-    test "wraps text in decorative lines" do
-      result = Bot.wrap_text("Hello")
-      assert result =~ "Hello"
-      assert result =~ "<code>"
-      assert result =~ "━━━"
-    end
-  end
-
-  describe "wrap_text/3" do
-    test "wraps text in HTML tag without lines" do
-      result = Bot.wrap_text("Hello", "b", false)
-      assert result == "<b>Hello</b>"
-    end
-
-    test "wraps text in HTML tag with lines" do
-      result = Bot.wrap_text("Hello", "b", true)
-      assert result =~ "<b>Hello</b>"
-      assert result =~ "<code>"
-    end
-
-    test "default lines parameter is false" do
-      result = Bot.wrap_text("Hi", "i")
-      assert result == "<i>Hi</i>"
+  describe "wrap_text/2" do
+    test "wraps text with wrapper on both sides" do
+      assert Bot.wrap_text("**", "Hello") == "**Hello**"
     end
   end
 

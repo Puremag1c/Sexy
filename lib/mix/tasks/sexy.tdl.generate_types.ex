@@ -87,7 +87,7 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
   end
 
   defp build_type(key, json_type) do
-    module_name = titlecase_once(key)
+    module_name = Sexy.Utils.titlecase_once(key)
 
     %{"url" => url, "fields" => fields} = json_type
     desc = Map.get(json_type, "desc")
@@ -148,10 +148,5 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
     |> String.split("\n")
     |> Enum.map(&pad.(&1))
     |> List.to_string()
-  end
-
-  defp titlecase_once(str) do
-    first_letter = String.first(str)
-    String.replace_prefix(str, first_letter, String.upcase(first_letter))
   end
 end

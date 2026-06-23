@@ -197,6 +197,13 @@ defmodule Sexy.Utils do
     |> Enum.map_join(" ", fn chunk -> chunk |> Enum.reverse() |> List.to_string() end)
   end
 
+  @doc false
+  @spec titlecase_once(String.t()) :: String.t()
+  def titlecase_once(str) do
+    first = String.first(str)
+    String.replace_prefix(str, first, String.upcase(first))
+  end
+
   @doc """
   Compress a UUID string into a short Base62 representation.
 

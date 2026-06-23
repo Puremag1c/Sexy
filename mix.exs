@@ -57,7 +57,6 @@ defmodule Sexy.MixProject do
           Sexy.Bot,
           Sexy.Bot.Api,
           Sexy.Bot.Sender,
-          Sexy.Bot.Screen,
           Sexy.Bot.Session,
           Sexy.Bot.Notification,
           Sexy.Bot.Poller

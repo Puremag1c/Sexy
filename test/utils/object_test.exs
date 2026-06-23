@@ -18,6 +18,28 @@ defmodule Sexy.Utils.ObjectTest do
     end
   end
 
+  describe "build/1" do
+    test "single map returns Object struct with given fields" do
+      result = Object.build(%{chat_id: 123, text: "Hello"})
+      assert %Object{chat_id: 123, text: "Hello"} = result
+    end
+
+    test "fills default values for missing fields" do
+      result = Object.build(%{chat_id: 1})
+      assert result.text == ""
+      assert result.kb == %{inline_keyboard: []}
+    end
+
+    test "list of maps returns list of Object structs" do
+      result = Object.build([%{chat_id: 1, text: "A"}, %{chat_id: 2, text: "B"}])
+      assert [%Object{chat_id: 1}, %Object{chat_id: 2, text: "B"}] = result
+    end
+
+    test "empty list returns empty list" do
+      assert Object.build([]) == []
+    end
+  end
+
   describe "detect_object_type/1" do
     test "nil media → txt" do
       assert Object.detect_object_type(%Object{media: nil}) == "txt"
