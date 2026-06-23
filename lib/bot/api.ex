@@ -282,21 +282,18 @@ defmodule Sexy.Bot.Api do
     |> then(&do_request("getChatMember", &1))
   end
 
-  @spec get_user_photo(integer()) :: String.t()
+  @spec get_user_photo(integer()) :: String.t() | nil
   def get_user_photo(user_id) do
     response =
       Jason.encode!(%{user_id: user_id, limit: "1"})
       |> then(&do_request("getUserProfilePhotos", &1))
 
     case response do
-      %{"result" => %{"photos" => []}} ->
-        "AgACAgIAAxkBAAIigmQVmbx7m-HI4Run-98wS9Si1Ul8AAJMxTEbUcywSDKEM2a7rqTUAQADAgADeAADLwQ"
-
-      %{"result" => %{"photos" => [[_, _, %{"file_id" => pic}]]}} ->
-        pic
+      %{"result" => %{"photos" => [sizes | _]}} when sizes != [] ->
+        List.last(sizes)["file_id"]
 
       _ ->
-        "AgACAgIAAxkBAAIigmQVmbx7m-HI4Run-98wS9Si1Ul8AAJMxTEbUcywSDKEM2a7rqTUAQADAgADeAADLwQ"
+        nil
     end
   end
 

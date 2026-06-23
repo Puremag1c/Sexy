@@ -64,14 +64,25 @@ defmodule Sexy.Utils do
   def split_query(query_string) do
     query_string
     |> String.split("-")
-    |> Enum.map(&split_keyword/1)
+    |> Enum.flat_map(&split_keyword/1)
     |> Enum.into(%{})
   end
 
+  # ponytail: to_existing_atom, not to_atom — key comes from user callback data,
+  # to_atom would let a flood of distinct keys exhaust the atom table (DoS).
+  # Unknown/malformed keys are dropped.
   defp split_keyword(kw_string) do
-    kw_string
-    |> String.split("=")
-    |> then(fn [a, b] -> {String.to_atom(a), parse_value(b)} end)
+    case String.split(kw_string, "=") do
+      [a, b] ->
+        try do
+          [{String.to_existing_atom(a), parse_value(b)}]
+        rescue
+          ArgumentError -> []
+        end
+
+      _ ->
+        []
+    end
   end
 
   defp parse_value(val) do

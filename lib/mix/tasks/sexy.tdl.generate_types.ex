@@ -3,8 +3,8 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
   use Mix.Task
   require Logger
 
-  @object_module "lib/sexy/tdl/object.ex"
-  @method_module "lib/sexy/tdl/method.ex"
+  @object_module "lib/tdl/object.ex"
+  @method_module "lib/tdl/method.ex"
 
   def run(args) do
     json_source =

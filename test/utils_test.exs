@@ -54,6 +54,15 @@ defmodule Sexy.UtilsTest do
     test "keeps string values as strings" do
       assert Utils.split_query("name=hello") == %{name: "hello"}
     end
+
+    test "drops keys that are not existing atoms (atom-table DoS guard)" do
+      # :id exists (used above); :no_such_key_zzz was never defined as an atom
+      assert Utils.split_query("id=1-no_such_key_zzz=2") == %{id: 1}
+    end
+
+    test "drops malformed pairs without '='" do
+      assert Utils.split_query("id=1-garbage") == %{id: 1}
+    end
   end
 
   # ── stringify_query/1 ────────────────────────────────────────
