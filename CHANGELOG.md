@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.14
+
+Cleanup pass (ponytail audit). **Breaking changes** — see below.
+
+### Breaking
+
+- Removed `Sexy.Bot.Screen`. Use `Sexy.Bot.build/1` (now backed by `Sexy.Utils.Object.build/1`).
+- Removed `wallet_init/5` (Wallet.tg integration + global `WALLET` env). Keep it in your app — it is not Telegram Bot API.
+- `send_dice/2` now takes a Telegram dice emoji (`"🎲"`, `"🎯"`, `"🏀"`, `"⚽"`, `"🎳"`, `"🎰"`) instead of the `"dice"/"bowl"/"foot"/"bask"/"dart"/"777"` codes.
+- `send_chat_action/2` now takes a real Telegram action string (`"typing"`, `"upload_photo"`, …) instead of the `"txt"/"pic"/"vid"` codes.
+- `get_user_photo/1` returns `nil` when the user has no photo, instead of a hardcoded fallback `file_id`. It also handles any number of photo sizes.
+- `Sexy.Utils.Bot.wrap_text` is now `wrap_text/2` (`wrapper, text`), replacing the previous `wrap_text/1` (decorative borders) and `wrap_text/3` (HTML tag).
+
+### Fixed
+
+- `Sexy.Utils` query parsing no longer calls `String.to_atom` on user-supplied callback keys (atom-table exhaustion / DoS). Unknown or malformed keys are dropped.
+- `mix sexy.tdl.generate_types` now writes to `lib/tdl/{object,method}.ex` (the real paths), so regeneration overwrites the shipped files.
+
+### Internal
+
+- Deduplicated HTTP response decoding in `Sexy.Bot.Api` (`decode_response/1`).
+- `get_photo_id/1` simplified to `List.last/1`; shared `titlecase_once/1` moved to `Sexy.Utils`.
+
 ## 0.9.13
 
 - Multipart upload for photo, video and animation (parallel to `send_document`):
