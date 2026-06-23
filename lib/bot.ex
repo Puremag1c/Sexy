@@ -211,17 +211,17 @@ defmodule Sexy.Bot do
   """
   defdelegate send_document(chat_id, file, name, text, kb), to: Sexy.Bot.Api
 
-  @doc """
-  Send a dice animation. Type is one of: `"dice"`, `"bowl"`, `"foot"`,
-  `"bask"`, `"dart"`, `"777"`.
+  @doc ~S"""
+  Send a dice animation. `emoji` is one of Telegram's dice emoji:
+  `"🎲"`, `"🎯"`, `"🏀"`, `"⚽"`, `"🎳"`, `"🎰"`.
   """
-  defdelegate send_dice(chat_id, type), to: Sexy.Bot.Api
+  defdelegate send_dice(chat_id, emoji), to: Sexy.Bot.Api
 
-  @doc """
-  Show a chat action indicator. Type is one of: `"txt"` (typing),
-  `"pic"` (uploading photo), `"vid"` (uploading video).
+  @doc ~S"""
+  Show a chat action indicator. `action` is a Telegram action string, e.g.
+  `"typing"`, `"upload_photo"`, `"upload_video"`.
   """
-  defdelegate send_chat_action(chat_id, type), to: Sexy.Bot.Api
+  defdelegate send_chat_action(chat_id, action), to: Sexy.Bot.Api
 
   @doc "Edit message text. Body is a map with `:chat_id`, `:message_id`, `:text`, etc."
   defdelegate edit_text(body), to: Sexy.Bot.Api
@@ -298,7 +298,4 @@ defmodule Sexy.Bot do
 
   @doc "Refund a Telegram Stars payment."
   defdelegate refund_star_payment(user_id, charge_id), to: Sexy.Bot.Api
-
-  @doc "Create a Wallet.tg payment order. Reads `WALLET` env var for the API key."
-  defdelegate wallet_init(cur, sum, id, info, user), to: Sexy.Bot.Api
 end

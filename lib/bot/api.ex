@@ -163,31 +163,22 @@ defmodule Sexy.Bot.Api do
     do_multipart("sendDocument", body)
   end
 
+  @doc ~S"""
+  Send a dice animation. `emoji` is one of Telegram's dice emoji:
+  `"🎲"`, `"🎯"`, `"🏀"`, `"⚽"`, `"🎳"`, `"🎰"`.
+  """
   @spec send_dice(integer(), String.t()) :: tg_response()
-  def send_dice(chat_id, type) do
-    emoji =
-      case type do
-        "dice" -> "🎲"
-        "bowl" -> "🎳"
-        "foot" -> "⚽"
-        "bask" -> "🏀"
-        "dart" -> "🎯"
-        "777" -> "🎰"
-      end
-
+  def send_dice(chat_id, emoji) do
     Jason.encode!(%{chat_id: chat_id, emoji: emoji})
     |> then(&do_request("sendDice", &1))
   end
 
+  @doc ~S"""
+  Show a chat action indicator. `action` is a Telegram action string, e.g.
+  `"typing"`, `"upload_photo"`, `"upload_video"`, `"record_voice"`.
+  """
   @spec send_chat_action(integer(), String.t()) :: tg_response()
-  def send_chat_action(chat_id, type) do
-    action =
-      case type do
-        "txt" -> "typing"
-        "pic" -> "upload_photo"
-        "vid" -> "upload_video"
-      end
-
+  def send_chat_action(chat_id, action) do
     Jason.encode!(%{chat_id: chat_id, action: action})
     |> then(&do_request("sendChatAction", &1))
   end
@@ -347,30 +338,6 @@ defmodule Sexy.Bot.Api do
   def refund_star_payment(user_id, telegram_payment_charge_id) do
     Jason.encode!(%{user_id: user_id, telegram_payment_charge_id: telegram_payment_charge_id})
     |> then(&do_request("refundStarPayment", &1))
-  end
-
-  @spec wallet_init(String.t(), number(), String.t(), String.t(), integer()) :: tg_response()
-  def wallet_init(currency, amount, external_id, description, telegram_user_id) do
-    wallet_key = System.get_env("WALLET")
-
-    headers = [
-      {"Content-Type", "application/json"},
-      {"Accept", "application/json"},
-      {"Wpay-Store-Api-Key", wallet_key}
-    ]
-
-    body =
-      Jason.encode!(%{
-        amount: %{currencyCode: currency, amount: amount},
-        description: description,
-        externalId: external_id,
-        timeoutSeconds: 2400,
-        customerTelegramUserId: telegram_user_id
-      })
-
-    url = "https://pay.wallet.tg/wpay/store-api/v1/order"
-
-    HTTPoison.post(url, body, headers) |> decode_response()
   end
 
   # ── Universal ──────────────────────────────────────────────────
