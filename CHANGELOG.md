@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.15
+
+### Fixed
+
+- Poller no longer crashes (and crash-loops the whole supervision tree) when Telegram or a proxy returns a non-JSON body. `get_updates/1` now matches `status_code: 200` and decodes without `Jason.decode!`; a 502 HTML page returns `{:error, {:http_status, 502}}` instead of raising.
+- Poller error diagnostics use `inspect/1` instead of `Atom.to_string/1`, which crashed on tuple reasons like `{:tls_alert, …}`.
+- Empty and errored polls keep the current offset instead of resetting to `0`, so an unconfirmed update batch is no longer replayed after a transport failure (double-firing handlers, including `handle_successful_payment`). Errored polls also back off from 100ms to 5s instead of hot-looping.
+
+### Changed
+
+- `Sexy.Bot.get_updates/1` (and `Sexy.Bot.Api.get_updates/1`) error return widened: alongside `{:error, atom}` it can now return `{:error, {:http_status, integer}}` or `{:error, :invalid_json}`. Bare `:error` (no `result` key) was already possible.
+
 ## 0.9.14
 
 Cleanup pass (ponytail audit). **Breaking changes** — see below.

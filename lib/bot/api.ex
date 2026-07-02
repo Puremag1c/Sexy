@@ -59,18 +59,21 @@ defmodule Sexy.Bot.Api do
 
   # ── Polling ────────────────────────────────────────────────────
 
-  @spec get_updates(integer()) :: {:ok, [map()]} | {:error, atom()}
+  @spec get_updates(integer()) :: {:ok, [map()]} | :error | {:error, term()}
   def get_updates(offset) do
     url = api_url() <> "/getUpdates"
     headers = [{"Content-Type", "application/json"}]
     body = Jason.encode!(%{offset: offset, timeout: 1})
 
     case HTTPoison.post(url, body, headers, recv_timeout: 10_000) do
-      {:ok, response} ->
-        response.body
-        |> Jason.decode!()
-        |> Utils.strip()
-        |> Map.fetch(:result)
+      {:ok, %{status_code: 200, body: resp_body}} ->
+        case Jason.decode(resp_body) do
+          {:ok, json} -> json |> Utils.strip() |> Map.fetch(:result)
+          {:error, _} -> {:error, :invalid_json}
+        end
+
+      {:ok, %{status_code: status}} ->
+        {:error, {:http_status, status}}
 
       {:error, response} ->
         {:error, response.reason}

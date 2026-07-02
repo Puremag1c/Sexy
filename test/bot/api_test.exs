@@ -178,6 +178,14 @@ defmodule Sexy.Bot.ApiTest do
       Bypass.down(bypass)
       assert {:error, _reason} = Api.get_updates(0)
     end
+
+    test "non-200 HTML body returns error instead of crashing", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/getUpdates", fn conn ->
+        Plug.Conn.resp(conn, 502, "<html><body>Bad Gateway</body></html>")
+      end)
+
+      assert {:error, {:http_status, 502}} = Api.get_updates(0)
+    end
   end
 
   # ── get_me/0 ────────────────────────────────────────────────

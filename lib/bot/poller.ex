@@ -44,12 +44,15 @@ defmodule Sexy.Bot.Poller do
     {:ok, 0}
   end
 
-  def handle_cast(:update, offset) do
-    new_offset =
-      Api.get_updates(offset)
-      |> process_messages
+  @poll_interval 100
+  @backoff 5_000
 
-    {:noreply, new_offset + 1, 100}
+  def handle_cast(:update, offset) do
+    {next_offset, timeout} =
+      Api.get_updates(offset)
+      |> process_messages(offset)
+
+    {:noreply, next_offset, timeout}
   end
 
   def handle_info(:timeout, offset) do
@@ -65,29 +68,31 @@ defmodule Sexy.Bot.Poller do
 
   # Helpers
 
-  defp process_messages({:ok, []}), do: -1
+  # Empty/error polls keep the current offset (never reset to 0), so an
+  # unconfirmed batch isn't replayed after a transport failure. Errors also
+  # back off the poll interval instead of hot-looping.
+  defp process_messages({:ok, []}, offset), do: {offset, @poll_interval}
 
-  defp process_messages({:ok, results}) do
+  defp process_messages({:ok, results}, _offset) do
     # TODO: async_stream didn't work last time — needs testing
     # Task.async_stream(results, fn m -> process_message(m) end, maxconcurrency: 10, timeout: 200000) |> Stream.run()
 
     for el <- results, do: match_update(el)
 
-    results
-    |> Enum.map(fn %{update_id: id} -> id end)
-    |> List.last()
+    last = results |> Enum.map(fn %{update_id: id} -> id end) |> List.last()
+    {last + 1, @poll_interval}
   end
 
-  defp process_messages({:error, error}) do
-    Logger.log(:error, Atom.to_string(error))
+  defp process_messages({:error, error}, offset) do
+    Logger.log(:error, inspect(error))
 
-    -1
+    {offset, @backoff}
   end
 
-  defp process_messages(:error) do
+  defp process_messages(:error, offset) do
     Logger.log(:error, "Unexpected error format in poller")
 
-    -1
+    {offset, @backoff}
   end
 
   defp match_update(%{message: %{successful_payment: _}} = u),
