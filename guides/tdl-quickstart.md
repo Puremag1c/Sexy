@@ -135,7 +135,8 @@ Sexy ships 2558 structs matching the TDLib API:
 Each struct has `@moduledoc` with field descriptions and a link to the official
 Telegram documentation.
 
-To regenerate from a newer TDLib version:
+To regenerate from a newer TDLib version (inside the sexy repository or a fork —
+not in your app, where the modules would duplicate the dependency's):
 
 ```bash
 mix sexy.tdl.generate_types /path/to/types.json

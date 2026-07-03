@@ -160,12 +160,15 @@ as `{:proxy_event, "error: ..."}`.
 
 ## Type generation
 
-`Sexy` ships structs for every TDLib method and object. Regenerate from a newer
-`types.json`:
+`Sexy` ships structs for every TDLib method and object — no generation step is
+needed in your app. To regenerate from a newer `types.json`, run **inside the
+sexy repository (or a fork)**:
 
 ```bash
 mix sexy.tdl.generate_types /path/to/types.json   # writes lib/tdl/{object,method}.ex
 ```
 
-`mix sexy.tdl.setup` runs an interactive wizard that writes the config and offers to
-generate types in one step.
+The task refuses to run in a consumer project: the generated modules would
+duplicate the ones compiled in the `:sexy` dependency and break `mix release`.
+
+`mix sexy.tdl.setup` runs an interactive wizard that writes the config.

@@ -350,6 +350,8 @@ Sexy ships 2558 structs generated from TDLib API documentation:
 - `Sexy.TDL.Object.*` — 1772 response types (UpdateNewMessage, User, Chat, etc.)
 
 Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to/types.json`
+(run inside the sexy repository or a fork — in a consumer project the generated
+modules would duplicate the ones compiled in the dependency; see UPGRADING.md).
 
 ---
 

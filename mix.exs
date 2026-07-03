@@ -1,7 +1,7 @@
 defmodule Sexy.MixProject do
   use Mix.Project
 
-  @version "0.9.15"
+  @version "0.10.0"
   @source_url "https://github.com/Puremag1c/Sexy"
 
   def project do
@@ -33,7 +33,7 @@ defmodule Sexy.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib mix.exs README.md CHANGELOG.md LICENSE)
+      files: ~w(lib mix.exs README.md CHANGELOG.md UPGRADING.md LICENSE)
     ]
   end
 
@@ -43,6 +43,7 @@ defmodule Sexy.MixProject do
       extras: [
         "README.md": [title: "Overview"],
         "CHANGELOG.md": [title: "Changelog"],
+        "UPGRADING.md": [title: "Upgrading"],
         "guides/bot-quickstart.md": [title: "Bot Quick Start"],
         "guides/tdl-quickstart.md": [title: "TDLib Quick Start"],
         "guides/tdl-reference.md": [title: "TDLib Reference"]
@@ -60,7 +61,8 @@ defmodule Sexy.MixProject do
           Sexy.Bot.Sender,
           Sexy.Bot.Session,
           Sexy.Bot.Notification,
-          Sexy.Bot.Poller
+          Sexy.Bot.Poller,
+          Sexy.Bot.Dispatcher
         ],
         TDLib: [
           Sexy.TDL,

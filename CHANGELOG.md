@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.10.0
+
+Reliability release: 37 audited defects fixed. **Breaking changes** — see
+[UPGRADING.md](UPGRADING.md) for the per-call migration guide.
+
+### Breaking
+
+- `Sexy.Bot.send/2` (and `Sender.deliver/2`) with a list returns per-item responses instead of `:ok`.
+- `Sexy.Bot.start_link/1` raises `ArgumentError` on a nil/empty token or an unloadable session module.
+- `Sexy.Bot.notify/3` returns `"ok" => false` (with `"result"` preserved) when buttons could not be attached.
+- `Sexy.TDL.open/3` returns `{:error, {:already_started, pid}}` for duplicate session names and `{:error, reason}` when the port can't open (was `{:ok, pid}` + silence).
+- `mix sexy.tdl.setup` no longer generates types (they ship with the package); `mix sexy.tdl.generate_types` refuses to run outside the sexy repo unless `--force`.
+
+### Fixed
+
+- **Poller:** a malformed update (e.g. `callback_query` without `data`) crash-looped the poller and took down the consumer's supervision tree via offset-0 replay. All update parsing now runs in supervised tasks; the offset survives restarts (atomics); the loop is driven by `send_after` and ignores stray messages instead of crashing (or stalling — the old GenServer-timeout loop was cancelled by any message).
+- **Api:** all methods (not just `get_updates`) return the documented error map on non-JSON responses instead of raising `Jason.DecodeError`; transport-error descriptions no longer crash on tuple reasons.
+- **Payments:** optional Session callbacks are resolved reliably (session module loaded at boot); `handle_poll` is guarded like the other optional callbacks; `poll_answer` updates are routed to `handle_poll` instead of being dropped; built-in `/_delete`//`_transit` no-op on forged/malformed callback data, and `/_transit` verifies the handler exists *before* deleting the message.
+- **Rate limits:** sends retry once after Telegram's `retry_after` on 429.
+- **Query format:** `-` inside values (negative chat ids, UUIDs, dates) no longer corrupts parsing — pairs split only on `-` followed by `key=`; the library's own `navigate:` flow round-trips.
+- **TDL:** `close/1` resurrected the session (permanent child of a DynamicSupervisor) or crash-looped all sessions — now terminates for real; Backend/Handler init no longer `MatchError`-crash-loops when the registry entry is gone; tdlib binary death is detected in non-proxy mode (`:exit_status`) and restarts the pair via the Riser's `one_for_all` (was: silent zombie); system/proxy events go directly to `app_pid` (were undeliverable on cold start/restart); Registry monitors session supervisors and drops dead entries; `transmit/2` returns `{:error, :no_backend}` instead of `:noproc`-exiting the caller; nested `vector<vector<T>>` fields (inline keyboards) deserialize recursively.
+- **Codegen:** output directory is created (`mkdir_p`); generation writes atomically (malformed `types.json` can't destroy previous files); doc text is escaped, closing a compile-time code-execution hole; setup prompts handle `:eof` with a clear error.
+- **Utils:** `fiat_chunk(-123456, 0)` renders `"-123 456"` instead of `"- 123 456"`; `get_message_media/2` returns `nil` (not `:ok`) for unsupported types; `Object.build/1` is idempotent for already-built Objects.
+- **Compatibility:** removed an Elixir 1.17+ guard (`is_non_struct_map/1`) — the declared `~> 1.14` support is real again.
+- **Lifecycle:** persistent_term config is erased when the bot stops (a stopped bot no longer sends with a stale token); delayed deletions run under a supervised Task.Supervisor.
+
+### Changed
+
+- `Sexy.TDL` supervision uses `:rest_for_one`; per-session Risers are `restart: :temporary` (a persistently failing session dies alone instead of cascading into other sessions).
+- Updates of the same chat are processed **in order** (partitioned dispatch by chat id via `Sexy.Bot.Dispatcher`); different chats run concurrently. Previously all updates were dispatched as unordered concurrent tasks.
+- Documented delivery semantics: at-least-once — payment handlers should deduplicate by `update_id`.
+
 ## 0.9.15
 
 ### Fixed
