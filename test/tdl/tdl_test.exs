@@ -20,8 +20,12 @@ defmodule Sexy.TDLTest do
 
   defp wait_until(fun, tries \\ 100) do
     cond do
-      fun.() -> :ok
-      tries == 0 -> flunk("condition not met in time")
+      fun.() ->
+        :ok
+
+      tries == 0 ->
+        flunk("condition not met in time")
+
       true ->
         Process.sleep(20)
         wait_until(fun, tries - 1)

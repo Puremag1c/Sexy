@@ -69,6 +69,7 @@ defmodule Sexy.Bot.PollerTest do
     :persistent_term.put({Sexy.Bot, :session}, TestSession)
     :persistent_term.put({Sexy.Bot, :offset_ref}, :atomics.new(1, signed: true))
     :persistent_term.put({TestSession, :test_pid}, self())
+
     start_supervised!(
       {PartitionSupervisor, child_spec: Sexy.Bot.Dispatcher, name: Sexy.Bot.Dispatchers}
     )
@@ -214,7 +215,9 @@ defmodule Sexy.Bot.PollerTest do
       assert {:noreply, 73} = Poller.handle_cast(:update, 0)
 
       # missing handle_pre_checkout → library must approve within 10s or the payment dies
-      assert_receive {:api, :pre_checkout_answer, %{"pre_checkout_query_id" => "pc9", "ok" => true}}
+      assert_receive {:api, :pre_checkout_answer,
+                      %{"pre_checkout_query_id" => "pc9", "ok" => true}}
+
       # missing handle_poll → logged and ignored, no crash; the batch continues
       assert_receive {:called, :handle_message, %{update_id: 72}}
     end
@@ -229,8 +232,14 @@ defmodule Sexy.Bot.PollerTest do
       stub_api(bypass, "/answerCallbackQuery", :answer, self())
 
       updates = [
-        %{update_id: 30, callback_query: %{id: "q1", data: "/_delete mid=77", message: %{chat: %{id: 5}}}},
-        %{update_id: 31, callback_query: %{id: "q2", data: "/_delete", message: %{chat: %{id: 5}}}}
+        %{
+          update_id: 30,
+          callback_query: %{id: "q1", data: "/_delete mid=77", message: %{chat: %{id: 5}}}
+        },
+        %{
+          update_id: 31,
+          callback_query: %{id: "q2", data: "/_delete", message: %{chat: %{id: 5}}}
+        }
       ]
 
       expect_updates(bypass, updates)
@@ -247,8 +256,18 @@ defmodule Sexy.Bot.PollerTest do
       stub_api(bypass, "/answerCallbackQuery", :answer, self())
 
       updates = [
-        %{update_id: 40, callback_query: %{id: "q1", data: "/_transit mid=9-cmd=order-id=42", message: %{chat: %{id: 5}}}},
-        %{update_id: 41, callback_query: %{id: "q2", data: "/_transit mid=9", message: %{chat: %{id: 5}}}}
+        %{
+          update_id: 40,
+          callback_query: %{
+            id: "q1",
+            data: "/_transit mid=9-cmd=order-id=42",
+            message: %{chat: %{id: 5}}
+          }
+        },
+        %{
+          update_id: 41,
+          callback_query: %{id: "q2", data: "/_transit mid=9", message: %{chat: %{id: 5}}}
+        }
       ]
 
       expect_updates(bypass, updates)
