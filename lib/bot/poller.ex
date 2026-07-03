@@ -3,7 +3,18 @@ defmodule Sexy.Bot.Poller do
   GenServer that polls Telegram for updates and routes them to `Sexy.Bot.Session` callbacks.
 
   Started automatically as a child of `Sexy.Bot`. Each incoming update is dispatched
-  in a separate `Task` to avoid blocking the polling loop.
+  through `Sexy.Bot.Dispatcher` partitions, so a malformed update or a crashing
+  handler can never kill the polling loop.
+
+  ## Delivery semantics
+
+  Updates are confirmed to Telegram on the poll *after* they were dispatched, and the
+  offset survives poller restarts — so delivery is **at-least-once**: after a crash in
+  the confirmation window a batch can be dispatched twice. Handlers with side effects
+  (payments!) should be idempotent, e.g. deduplicate by `update_id`.
+
+  Updates of the **same chat are processed in order** (they land in the same
+  dispatcher partition); different chats run concurrently.
 
   ## Routing rules
 
@@ -16,7 +27,7 @@ defmodule Sexy.Bot.Poller do
   | `callback_query` | otherwise | `handle_query/1` |
   | `message` | has `successful_payment` | `handle_successful_payment/1` |
   | `pre_checkout_query` | — | `handle_pre_checkout/1` |
-  | `poll` | — | `handle_poll/1` |
+  | `poll` / `poll_answer` | — | `handle_poll/1` |
   | `my_chat_member` | — | `handle_chat_member/1` |
 
   ## Built-in routes
@@ -24,6 +35,9 @@ defmodule Sexy.Bot.Poller do
     * `/_delete mid=<id>` — deletes message with given id, answers the callback
     * `/_transit mid=<id>-cmd=<command>-...` — deletes message, answers callback,
       then calls `Session.handle_transit(chat_id, command, query_params)`
+
+  Callback data is client-controlled: malformed built-in routes (missing `mid`/`cmd`)
+  are answered with a no-op instead of raising.
   """
   use GenServer
 
@@ -31,6 +45,9 @@ defmodule Sexy.Bot.Poller do
   alias Sexy.Utils
 
   require Logger
+
+  @poll_interval 100
+  @backoff 5_000
 
   # Server
 
@@ -40,24 +57,28 @@ defmodule Sexy.Bot.Poller do
   end
 
   def init(:ok) do
-    update()
-    {:ok, 0}
+    send(self(), :poll)
+    {:ok, restore_offset()}
   end
 
-  @poll_interval 100
-  @backoff 5_000
-
-  def handle_cast(:update, offset) do
-    {next_offset, timeout} =
-      Api.get_updates(offset)
-      |> process_messages(offset)
-
-    {:noreply, next_offset, timeout}
+  # The loop is driven by send_after, not GenServer timeouts — a GenServer
+  # timeout is cancelled by ANY arriving message, so a single stray message
+  # (e.g. a socket message leaked by the HTTP pool) would stop polling forever.
+  def handle_info(:poll, offset) do
+    {new_offset, delay} = poll(offset)
+    Process.send_after(self(), :poll, delay)
+    {:noreply, new_offset}
   end
 
-  def handle_info(:timeout, offset) do
-    update()
+  def handle_info(msg, offset) do
+    Logger.debug("Sexy.Bot.Poller ignored message: #{inspect(msg)}")
     {:noreply, offset}
+  end
+
+  # One-off extra poll; the send_after loop keeps its own schedule.
+  def handle_cast(:update, offset) do
+    {new_offset, _delay} = poll(offset)
+    {:noreply, new_offset}
   end
 
   # Client
@@ -68,19 +89,29 @@ defmodule Sexy.Bot.Poller do
 
   # Helpers
 
+  defp poll(offset) do
+    Api.get_updates(offset)
+    |> process_messages(offset)
+  end
+
   # Empty/error polls keep the current offset (never reset to 0), so an
   # unconfirmed batch isn't replayed after a transport failure. Errors also
   # back off the poll interval instead of hot-looping.
   defp process_messages({:ok, []}, offset), do: {offset, @poll_interval}
 
   defp process_messages({:ok, results}, _offset) do
-    # TODO: async_stream didn't work last time — needs testing
-    # Task.async_stream(results, fn m -> process_message(m) end, maxconcurrency: 10, timeout: 200000) |> Stream.run()
-
-    for el <- results, do: match_update(el)
+    # All routing (including reading update contents) runs inside Dispatcher
+    # partitions: a poison update can never crash the polling loop itself, and
+    # updates of the same chat land in the same partition — processed in order.
+    for u <- results do
+      GenServer.cast(
+        {:via, PartitionSupervisor, {Sexy.Bot.Dispatchers, chat_key(u)}},
+        {:dispatch, fn -> match_update(u) end}
+      )
+    end
 
     last = results |> Enum.map(fn %{update_id: id} -> id end) |> List.last()
-    {last + 1, @poll_interval}
+    {save_offset(last + 1), @poll_interval}
   end
 
   defp process_messages({:error, error}, offset) do
@@ -95,62 +126,100 @@ defmodule Sexy.Bot.Poller do
     {offset, @backoff}
   end
 
+  # Partition key: chat id where the update has one (per-chat ordering),
+  # user id for payments, update_id otherwise (spreads chat-less updates).
+  defp chat_key(%{message: %{chat: %{id: id}}}), do: id
+  defp chat_key(%{callback_query: %{message: %{chat: %{id: id}}}}), do: id
+  defp chat_key(%{my_chat_member: %{chat: %{id: id}}}), do: id
+  defp chat_key(%{pre_checkout_query: %{from: %{id: id}}}), do: id
+  defp chat_key(%{update_id: id}), do: id
+
+  # Offset survives poller restarts (atomics ref owned by Sexy.Bot.Config),
+  # so a crash never replays the already-dispatched batch.
+  defp restore_offset, do: :atomics.get(offset_ref(), 1)
+
+  defp save_offset(offset) do
+    :atomics.put(offset_ref(), 1, offset)
+    offset
+  end
+
+  defp offset_ref, do: :persistent_term.get({Sexy.Bot, :offset_ref})
+
   defp match_update(%{message: %{successful_payment: _}} = u),
-    do: Task.start(fn -> apply_successful_payment(u) end)
+    do: apply_successful_payment(u)
 
   defp match_update(%{message: message} = u) do
-    if Map.has_key?(message, :text) and String.first(u.message.text) == "/",
-      do: Task.start(fn -> apply_command(u) end),
-      else: Task.start(fn -> apply_message(u) end)
+    if Map.has_key?(message, :text) and String.first(message.text) == "/",
+      do: apply_command(u),
+      else: apply_message(u)
   end
 
   defp match_update(%{callback_query: query} = u) do
-    case Utils.Bot.get_command_name(query.data) do
-      "_delete" ->
-        Task.start(fn -> handle_builtin_delete(query) end)
-
-      "_transit" ->
-        Task.start(fn -> handle_builtin_transit(query) end)
-
-      _ ->
-        Task.start(fn -> apply_query(u) end)
+    # :data is optional per the Bot API (e.g. game buttons) — route dataless
+    # queries to the consumer handler instead of crashing.
+    case Utils.Bot.get_command_name(Map.get(query, :data, "")) do
+      "_delete" -> handle_builtin_delete(query)
+      "_transit" -> handle_builtin_transit(query)
+      _ -> apply_query(u)
     end
   end
 
   defp match_update(%{pre_checkout_query: _} = u),
-    do: Task.start(fn -> apply_pre_checkout(u) end)
+    do: apply_pre_checkout(u)
 
   defp match_update(%{poll: _poll} = u),
-    do: Task.start(fn -> apply_poll(u) end)
+    do: apply_poll(u)
+
+  defp match_update(%{poll_answer: _poll_answer} = u),
+    do: apply_poll(u)
 
   defp match_update(%{my_chat_member: _chat_member} = u),
-    do: Task.start(fn -> apply_chat_member(u) end)
+    do: apply_chat_member(u)
 
   defp match_update(u),
     do: Logger.warning("Unknown update in poller\n\n#{inspect(u, pretty: true)}")
 
   defp handle_builtin_delete(query) do
-    params = Utils.get_query(query.data)
-    chat_id = query.message.chat.id
-    Api.delete_message(chat_id, params.mid)
+    case Utils.get_query(Map.get(query, :data, "")) do
+      %{mid: mid} -> Api.delete_message(query.message.chat.id, mid)
+      _ -> :ok
+    end
+
     Api.answer_callback(query.id, "", false)
   end
 
   defp handle_builtin_transit(query) do
-    params = Utils.get_query(query.data)
-    chat_id = query.message.chat.id
-    Api.delete_message(chat_id, params.mid)
-    Api.answer_callback(query.id, "", false)
-    session().handle_transit(chat_id, params.cmd, Map.drop(params, [:mid, :cmd]))
+    params = Utils.get_query(Map.get(query, :data, ""))
+
+    # Check the optional callback BEFORE any side effect: forged /_transit data
+    # must not delete a message when there is no handler to continue the flow.
+    with %{mid: mid, cmd: cmd} <- params,
+         true <- function_exported?(session(), :handle_transit, 3) do
+      chat_id = query.message.chat.id
+      Api.delete_message(chat_id, mid)
+      Api.answer_callback(query.id, "", false)
+      session().handle_transit(chat_id, cmd, Map.drop(params, [:mid, :cmd]))
+    else
+      _ -> Api.answer_callback(query.id, "", false)
+    end
   end
 
+  # The session module is loaded at boot by Sexy.Bot.start_link
+  # (Code.ensure_loaded!), so function_exported? checks here are reliable.
   defp session, do: :persistent_term.get({Sexy.Bot, :session})
 
   def apply_command(u), do: session().handle_command(u)
   def apply_message(u), do: session().handle_message(u)
   def apply_query(u), do: session().handle_query(u)
-  def apply_poll(u), do: session().handle_poll(u)
   def apply_chat_member(u), do: session().handle_chat_member(u)
+
+  def apply_poll(u) do
+    if function_exported?(session(), :handle_poll, 1) do
+      session().handle_poll(u)
+    else
+      Logger.info("Received poll update, no handle_poll defined")
+    end
+  end
 
   def apply_pre_checkout(u) do
     if function_exported?(session(), :handle_pre_checkout, 1) do

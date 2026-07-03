@@ -52,10 +52,18 @@ defmodule Sexy.Bot.Api do
     HTTPoison.post(url, {:multipart, body}, headers, recv_timeout: timeout) |> decode_response()
   end
 
-  defp decode_response({:ok, response}), do: Jason.decode!(response.body)
+  # Never raise into the caller: any transport/JSON failure becomes the
+  # documented %{"ok" => false, ...} error map. Telegram's own error bodies
+  # (400/403/429 with JSON) pass through unchanged.
+  defp decode_response({:ok, %{status_code: status, body: body}}) do
+    case Jason.decode(body) do
+      {:ok, json} -> json
+      {:error, _} -> %{"ok" => false, "description" => "HTTP #{status}: non-JSON response"}
+    end
+  end
 
   defp decode_response({:error, %{reason: reason}}),
-    do: %{"ok" => false, "description" => "HTTP error: #{reason}"}
+    do: %{"ok" => false, "description" => "HTTP error: #{inspect(reason)}"}
 
   # ── Polling ────────────────────────────────────────────────────
 
@@ -211,7 +219,8 @@ defmodule Sexy.Bot.Api do
   ## Options
 
     * `:after` — delay in seconds before deleting. Accepts integers and floats.
-      When provided, deletion runs asynchronously in a background task.
+      When provided, deletion runs asynchronously in a supervised background task.
+      Best-effort: pending deletions are lost if the node restarts before the delay elapses.
 
   ## Examples
 
@@ -233,7 +242,7 @@ defmodule Sexy.Bot.Api do
         |> then(&do_request("deleteMessage", &1))
 
       seconds when is_number(seconds) ->
-        Task.start(fn ->
+        Task.Supervisor.start_child(Sexy.Bot.TaskSupervisor, fn ->
           Process.sleep(trunc(seconds * 1000))
           delete_message(chat_id, message_id)
         end)

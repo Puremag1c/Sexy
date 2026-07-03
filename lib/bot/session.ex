@@ -71,7 +71,7 @@ defmodule Sexy.Bot.Session do
 
   ## Optional callbacks
 
-    * `handle_poll/1` — for poll answer updates
+    * `handle_poll/1` — for poll and poll answer updates (logged if not implemented)
     * `handle_transit/3` — for built-in `/_transit` navigation buttons
       (see `Sexy.Bot.Notification`)
     * `handle_pre_checkout/1` — for payment pre-checkout queries (auto-approved if not implemented)
@@ -120,7 +120,14 @@ defmodule Sexy.Bot.Session do
   @doc "Handle chat member status changes (user joined/left, bot added/removed)."
   @callback handle_chat_member(update :: map()) :: any()
 
-  @doc "Handle poll answer updates. Optional."
+  @doc """
+  Handle poll updates. Optional — if not implemented, poll updates are logged and ignored.
+
+  Receives both update kinds Telegram delivers for polls:
+
+    * `%{poll: ...}` — aggregated poll state (anonymous vote counts)
+    * `%{poll_answer: ...}` — an individual user's vote in a non-anonymous poll
+  """
   @callback handle_poll(update :: map()) :: any()
 
   @doc """

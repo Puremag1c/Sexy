@@ -273,6 +273,18 @@ defmodule Sexy.Bot.ApiTest do
       assert result["description"] =~ "HTTP error"
     end
 
+    test "non-JSON 502 on the send path returns error map instead of raising", %{
+      bypass: bypass
+    } do
+      Bypass.expect_once(bypass, "POST", "/sendMessage", fn conn ->
+        Plug.Conn.resp(conn, 502, "<html><body>Bad Gateway</body></html>")
+      end)
+
+      result = Api.send_message(123, "hi")
+      assert result["ok"] == false
+      assert result["description"] =~ "HTTP 502"
+    end
+
     test "Telegram API error is returned as-is", %{bypass: bypass} do
       Bypass.expect_once(bypass, "POST", "/sendMessage", fn conn ->
         conn

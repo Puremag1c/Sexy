@@ -94,14 +94,29 @@ defmodule Sexy.Bot do
   def start_link(opts) do
     token = Keyword.fetch!(opts, :token)
     session = Keyword.fetch!(opts, :session)
-    :persistent_term.put({Sexy.Bot, :api_url}, "https://api.telegram.org/bot#{token}")
-    :persistent_term.put({Sexy.Bot, :session}, session)
+
+    # Fail at boot, not at runtime: a nil token (unset env var) or a typo'd
+    # session module would otherwise start a silently dead bot.
+    unless is_binary(token) and token != "" do
+      raise ArgumentError,
+            "Sexy.Bot :token must be a non-empty string, got: #{inspect(token)}. " <>
+              "Is your BOT_TOKEN environment variable set?"
+    end
+
+    Code.ensure_loaded!(session)
+
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @impl true
-  def init(_opts) do
-    children = [Sexy.Bot.Poller]
+  def init(opts) do
+    children = [
+      {Sexy.Bot.Config, Keyword.take(opts, [:token, :session])},
+      {Task.Supervisor, name: Sexy.Bot.TaskSupervisor},
+      {PartitionSupervisor, child_spec: Sexy.Bot.Dispatcher, name: Sexy.Bot.Dispatchers},
+      Sexy.Bot.Poller
+    ]
+
     Supervisor.init(children, strategy: :one_for_one)
   end
 
@@ -127,6 +142,9 @@ defmodule Sexy.Bot do
   Handles the full single-message lifecycle: detect type, call API, delete old
   message, save new message id via Session.
 
+  For a list of Objects, returns the list of per-item Telegram responses
+  (in order), so partial failures are visible.
+
   ## Options
 
     * `:update_mid` — `true` (default) to manage the active message,
@@ -142,7 +160,8 @@ defmodule Sexy.Bot do
       # Send without replacing the current screen
       Sexy.Bot.send(object, update_mid: false)
   """
-  @spec send(Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()], keyword()) :: tg_response() | :ok
+  @spec send(Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()], keyword()) ::
+          tg_response() | [tg_response() | :ok] | :ok
   def send(object, opts \\ []), do: Sender.deliver(object, opts)
 
   @doc """
