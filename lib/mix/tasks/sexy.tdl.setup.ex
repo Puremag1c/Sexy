@@ -5,7 +5,10 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
   Guides through configuration:
   1. Path to tdlib_json_cli binary
   2. Data root directory for session storage
-  3. Generates Method/Object types from types.json
+
+  `Sexy.TDL.Object`/`Sexy.TDL.Method` types are bundled with the library —
+  no generation step is needed. To regenerate them for a newer TDLib, run
+  `mix sexy.tdl.generate_types` inside the sexy repository (or a fork).
 
   Usage:
 
@@ -19,17 +22,13 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
 
     binary = prompt_binary()
     data_root = prompt_data_root()
-    types_json = prompt_types_json(binary)
 
     write_config(binary, data_root)
 
-    if types_json do
-      Mix.shell().info("\nGenerating types from #{types_json}...")
-      Mix.Task.run("sexy.tdl.generate_types", [types_json])
-    end
-
     Mix.shell().info("""
     \n── Done! ──
+
+    TDLib types (Sexy.TDL.Object/Method) are already bundled with the library.
 
     Add to your supervision tree:
 
@@ -46,13 +45,18 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
     """)
   end
 
+  # Mix.shell().prompt returns :eof when there is no interactive stdin (CI,
+  # piped input) — fail with a clear message instead of a FunctionClauseError.
+  defp prompt(message) do
+    case Mix.shell().prompt(message) do
+      input when is_binary(input) -> String.trim(input)
+      _eof -> Mix.raise("sexy.tdl.setup requires an interactive terminal")
+    end
+  end
+
   defp prompt_binary do
     default = "/usr/local/bin/tdlib_json_cli"
-
-    input =
-      Mix.shell().prompt("Path to tdlib_json_cli binary [#{default}]:")
-      |> String.trim()
-
+    input = prompt("Path to tdlib_json_cli binary [#{default}]:")
     path = if input == "", do: default, else: input
 
     unless File.exists?(path) do
@@ -64,37 +68,8 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
 
   defp prompt_data_root do
     default = "/tmp/tdlib_data"
-
-    input =
-      Mix.shell().prompt("Data root directory for sessions [#{default}]:")
-      |> String.trim()
-
+    input = prompt("Data root directory for sessions [#{default}]:")
     if input == "", do: default, else: input
-  end
-
-  defp prompt_types_json(binary_path) do
-    dir = Path.dirname(binary_path)
-    candidate = Path.join(dir, "types.json")
-
-    if File.exists?(candidate) do
-      answer =
-        Mix.shell().prompt("Found types.json at #{candidate}. Generate types? [Y/n]:")
-        |> String.trim()
-        |> String.downcase()
-
-      if answer in ["", "y", "yes"], do: candidate, else: prompt_custom_types()
-    else
-      Mix.shell().info("No types.json found near binary.")
-      prompt_custom_types()
-    end
-  end
-
-  defp prompt_custom_types do
-    input =
-      Mix.shell().prompt("Path to types.json (leave empty to skip):")
-      |> String.trim()
-
-    if input == "", do: nil, else: input
   end
 
   defp write_config(binary, data_root) do
