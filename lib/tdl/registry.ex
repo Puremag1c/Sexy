@@ -46,7 +46,7 @@ defmodule Sexy.TDL.Registry do
 
   def init(:ok) do
     table = :ets.new(@name, [:named_table, :set, :public, read_concurrency: true])
-    {:ok, table}
+    {:ok, %{table: table, monitors: %{}}}
   end
 
   # Public API
@@ -120,27 +120,58 @@ defmodule Sexy.TDL.Registry do
 
   # Server callbacks
 
-  def handle_call({:set, key, value}, _from, table) do
-    reply = :ets.insert(table, {key, value})
-    {:reply, reply, table}
+  def handle_call({:set, key, value}, _from, state) do
+    reply = :ets.insert(state.table, {key, value})
+    {:reply, reply, state}
   end
 
-  def handle_call({:update, session_name, change}, _from, table) do
-    reply =
-      case :ets.lookup(table, session_name) do
-        [{_key, struct}] ->
-          new_struct = struct(struct, change)
-          :ets.insert(table, {session_name, new_struct})
+  def handle_call({:update, session_name, change}, _from, state) do
+    case :ets.lookup(state.table, session_name) do
+      [{_key, struct}] ->
+        new_struct = struct(struct, change)
+        :ets.insert(state.table, {session_name, new_struct})
 
-        [] ->
-          false
-      end
+        # Monitor the session supervisor: when it dies (crash-looped session,
+        # temporary Riser given up), its entry is dropped automatically —
+        # no stale pids accumulate.
+        state =
+          case change[:supervisor_pid] do
+            pid when is_pid(pid) ->
+              ref = Process.monitor(pid)
+              %{state | monitors: Map.put(state.monitors, ref, session_name)}
 
-    {:reply, reply, table}
+            _ ->
+              state
+          end
+
+        {:reply, true, state}
+
+      [] ->
+        {:reply, false, state}
+    end
   end
 
-  def handle_call({:drop, key}, _from, table) do
-    reply = :ets.delete(table, key)
-    {:reply, reply, table}
+  def handle_call({:drop, key}, _from, state) do
+    reply = :ets.delete(state.table, key)
+    {:reply, reply, state}
+  end
+
+  def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
+    {name, monitors} = Map.pop(state.monitors, ref)
+
+    # Drop only if the entry still belongs to the dead supervisor —
+    # the session may have been re-opened in the meantime.
+    with true <- is_binary(name),
+         [{^name, %{supervisor_pid: ^pid}}] <- :ets.lookup(state.table, name) do
+      :ets.delete(state.table, name)
+    end
+
+    {:noreply, %{state | monitors: monitors}}
+  end
+
+  def handle_info(msg, state) do
+    require Logger
+    Logger.debug("Sexy.TDL.Registry ignored message: #{inspect(msg)}")
+    {:noreply, state}
   end
 end

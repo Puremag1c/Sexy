@@ -7,8 +7,14 @@ defmodule Sexy.TDL.Riser do
   `:children` option in `Sexy.TDL.open/3`.
 
   Started automatically by `Sexy.TDL` via `DynamicSupervisor` — not called directly.
+
+  Per-session resilience lives here: `:one_for_all` restarts the Backend/Handler
+  pair up to 5 times in 30 seconds (e.g. when the tdlib binary dies). A session
+  that keeps failing dies alone — `restart: :temporary` ensures it is never
+  resurrected by the `AccountVisor`, so one broken account can't cascade into
+  the others. Monitor the pid returned by `Sexy.TDL.open/3` to detect this.
   """
-  use Supervisor
+  use Supervisor, restart: :temporary
 
   alias Sexy.TDL.{Backend, Handler, Registry}
 

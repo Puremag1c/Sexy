@@ -130,9 +130,28 @@ defmodule Sexy.TDL do
     - `:proxy` — enable proxychains (default: false)
     - `:encryption_key` — database encryption key (default: "")
     - `:children` — extra child specs for the Riser supervisor
+
+  Returns `{:error, {:already_started, pid}}` if a session with this name is
+  already running, and `{:error, reason}` if the tdlib port can't be opened
+  (wrong `:tdlib_binary` path, etc.).
   """
-  @spec open(String.t(), struct(), keyword()) :: {:ok, pid()} | {:error, term()}
+  @spec open(String.t(), struct(), keyword()) ::
+          {:ok, pid()} | {:error, {:already_started, pid()} | term()}
   def open(session_name, config, opts \\ []) do
+    case Registry.get(session_name) do
+      %{supervisor_pid: pid} when is_pid(pid) ->
+        # ponytail: check-then-act — two concurrent opens of the same name can
+        # still race; true uniqueness needs registration-at-start.
+        if Process.alive?(pid),
+          do: {:error, {:already_started, pid}},
+          else: do_open(session_name, config, opts)
+
+      _ ->
+        do_open(session_name, config, opts)
+    end
+  end
+
+  defp do_open(session_name, config, opts) do
     app_pid = Keyword.fetch!(opts, :app_pid)
     proxy = Keyword.get(opts, :proxy, false)
     encryption_key = Keyword.get(opts, :encryption_key, "")
@@ -164,9 +183,11 @@ defmodule Sexy.TDL do
   def close(session_name) do
     case Registry.get(session_name) do
       %{supervisor_pid: pid} when is_pid(pid) ->
-        Supervisor.stop(pid)
+        # terminate_child, not Supervisor.stop: a stopped child would be
+        # resurrected by the DynamicSupervisor; terminate_child removes it.
+        result = DynamicSupervisor.terminate_child(Sexy.TDL.AccountVisor, pid)
         Registry.drop(session_name)
-        :ok
+        result
 
       _ ->
         Registry.drop(session_name)
@@ -174,8 +195,14 @@ defmodule Sexy.TDL do
     end
   end
 
-  @doc "Send a TDLib command over the session. Accepts maps or pre-encoded JSON strings."
-  @spec transmit(String.t(), map() | String.t()) :: term()
+  @doc """
+  Send a TDLib command over the session. Accepts maps or pre-encoded JSON strings.
+
+  Returns `:ok` when the command was written to the tdlib port,
+  `{:error, :no_backend}` when the session has no live backend, or
+  `{:error, :no_port}` when the port just died (the session is restarting).
+  """
+  @spec transmit(String.t(), map() | String.t()) :: :ok | {:error, :no_backend | :no_port}
   def transmit(session_name, msg) when is_map(msg) do
     json =
       msg
@@ -187,8 +214,17 @@ defmodule Sexy.TDL do
 
   def transmit(session_name, json) when is_binary(json) do
     case Registry.get(session_name, :backend_pid) do
-      pid when is_pid(pid) -> GenServer.call(pid, {:transmit, json})
-      _ -> {:error, :no_backend}
+      pid when is_pid(pid) ->
+        try do
+          GenServer.call(pid, {:transmit, json})
+        catch
+          # The registry entry can briefly hold a dead pid during a restart —
+          # same condition as a missing pid, same answer.
+          :exit, {:noproc, _} -> {:error, :no_backend}
+        end
+
+      _ ->
+        {:error, :no_backend}
     end
   end
 
@@ -206,6 +242,9 @@ defmodule Sexy.TDL do
       {DynamicSupervisor, name: Sexy.TDL.AccountVisor, strategy: :one_for_one}
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    # rest_for_one: everything below depends on the Registry's ETS table.
+    # If the Registry crashes, sessions restart into a consistent empty state
+    # instead of running as zombies against an empty table.
+    Supervisor.init(children, strategy: :rest_for_one)
   end
 end

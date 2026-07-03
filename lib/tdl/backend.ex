@@ -22,23 +22,30 @@ defmodule Sexy.TDL.Backend do
   defstruct [:name, :port, :buffer]
 
   @port_opts_proxy [:binary, :line, :exit_status, :use_stdio, :stderr_to_stdout, :hide]
-  @port_opts [:binary, :line]
+  # :exit_status is essential: without it the death of the external binary is
+  # completely invisible and the session silently zombies.
+  @port_opts [:binary, :line, :exit_status, :stderr_to_stdout]
 
   def start_link({name, proxy}) do
     GenServer.start_link(__MODULE__, {name, proxy}, [])
   end
 
   def init({name, proxy}) do
-    true = Registry.update(name, backend_pid: self())
+    # The registry entry can be gone (session closed mid-restart) — stop
+    # cleanly instead of crash-looping the whole Riser.
+    case Registry.update(name, backend_pid: self()) do
+      true ->
+        case open_port(name, proxy) do
+          {:ok, port} ->
+            {:ok, %__MODULE__{name: name, buffer: "", port: port}}
 
-    case open_port(name, proxy) do
-      {:ok, port} ->
-        {:ok, %__MODULE__{name: name, buffer: "", port: port}}
+          {:error, reason} ->
+            # Fail fast: the error surfaces synchronously via Sexy.TDL.open/3.
+            {:stop, {:port_failed, reason}}
+        end
 
-      {:error, reason} ->
-        handler_pid = Registry.get(name, :handler_pid)
-        if handler_pid, do: send(handler_pid, {:system_event, :port_failed, reason})
-        {:ok, %__MODULE__{name: name, buffer: "", port: nil}}
+      false ->
+        {:stop, :session_unregistered}
     end
   end
 
@@ -47,9 +54,12 @@ defmodule Sexy.TDL.Backend do
   end
 
   def handle_call({:transmit, msg}, _from, state) do
-    data = msg <> "\n"
-    result = Kernel.send(state.port, {self(), {:command, data}})
-    {:reply, result, state}
+    # Port.command, not raw send: writing to a dead port must fail loudly
+    # (raw send is silently discarded), so the pair gets restarted.
+    Port.command(state.port, msg <> "\n")
+    {:reply, :ok, state}
+  rescue
+    ArgumentError -> {:stop, {:port_exited, :closed}, {:error, :no_port}, state}
   end
 
   def handle_info({_from, {:data, data}}, state) do
@@ -87,11 +97,16 @@ defmodule Sexy.TDL.Backend do
   def handle_info({_port, {:exit_status, status}}, state) do
     Logger.warning("#{state.name}: port exited with status #{status}")
     forward_system_event(state.name, :port_exited, status)
-    {:noreply, %{state | port: nil}}
+    # Stop so the Riser's :one_for_all restarts the Backend/Handler pair with
+    # a fresh port — that supervision exists exactly for this failure.
+    {:stop, {:port_exited, status}, %{state | port: nil}}
   end
 
   def terminate(_reason, %{port: port}) when is_port(port) do
     Port.close(port)
+  rescue
+    # The port may already be closed (e.g. we are stopping because it died)
+    ArgumentError -> :ok
   end
 
   def terminate(_reason, _state), do: :ok
@@ -149,14 +164,16 @@ defmodule Sexy.TDL.Backend do
     end
   end
 
+  # System/proxy events go straight to the app process: the Handler added
+  # nothing for them, and during restarts its registry pid can be stale.
   defp forward_proxy_event(name, text) do
-    handler_pid = Registry.get(name, :handler_pid)
-    if handler_pid, do: send(handler_pid, {:proxy_event, text})
+    app_pid = Registry.get(name, :app_pid)
+    if is_pid(app_pid), do: send(app_pid, {:proxy_event, text})
   end
 
   defp forward_system_event(name, type, details) do
-    handler_pid = Registry.get(name, :handler_pid)
-    if handler_pid, do: send(handler_pid, {:system_event, type, details})
+    app_pid = Registry.get(name, :app_pid)
+    if is_pid(app_pid), do: send(app_pid, {:system_event, type, details})
   end
 
   defp strip_ansi(text), do: Regex.replace(~r/\e\[[0-9;]*m/, text, "")

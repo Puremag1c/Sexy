@@ -9,11 +9,10 @@ defmodule Sexy.TDL.Handler do
 
   ## Event types
 
-  The handler forwards three kinds of messages to `app_pid`:
-
-    * `{:recv, struct}` — deserialized TDLib object (e.g. `%Sexy.TDL.Object.UpdateNewMessage{}`)
-    * `{:proxy_event, text}` — proxychains output lines
-    * `{:system_event, type, details}` — port failures, exits, missing proxy config
+  The handler forwards deserialized objects to `app_pid` as `{:recv, struct}`
+  (e.g. `%Sexy.TDL.Object.UpdateNewMessage{}`). System and proxy events
+  (`{:system_event, type, details}`, `{:proxy_event, text}`) are sent to
+  `app_pid` directly by `Sexy.TDL.Backend`.
   """
   use GenServer
 
@@ -28,8 +27,12 @@ defmodule Sexy.TDL.Handler do
   end
 
   def init(session) do
-    true = Registry.update(session, handler_pid: self())
-    {:ok, session}
+    # The registry entry can be gone (session closed mid-restart) — stop
+    # cleanly instead of crash-looping the whole Riser.
+    case Registry.update(session, handler_pid: self()) do
+      true -> {:ok, session}
+      false -> {:stop, :session_unregistered}
+    end
   end
 
   # Messages from Backend
@@ -48,17 +51,6 @@ defmodule Sexy.TDL.Handler do
         Logger.warning("#{session}: invalid JSON from backend: #{inspect(text)}")
     end
 
-    {:noreply, session}
-  end
-
-  # Proxy and system events — forward to app
-  def handle_info({:proxy_event, text}, session) do
-    forward_to_app(session, {:proxy_event, text})
-    {:noreply, session}
-  end
-
-  def handle_info({:system_event, type, details}, session) do
-    forward_to_app(session, {:system_event, type, details})
     {:noreply, session}
   end
 
@@ -130,6 +122,10 @@ defmodule Sexy.TDL.Handler do
       do: recursive_match(item, prefix),
       else: item
   end
+
+  # vector<vector<T>> fields (e.g. inline keyboard rows) nest lists in lists
+  defp recurse_if_typed(item, prefix) when is_list(item),
+    do: Enum.map(item, &recurse_if_typed(&1, prefix))
 
   defp recurse_if_typed(item, _prefix), do: item
 
