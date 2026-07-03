@@ -82,7 +82,9 @@ defmodule Sexy.Utils.Object do
   @spec build(map()) :: t()
   @spec build([map()]) :: [t()]
   def build(items) when is_list(items), do: Enum.map(items, &build/1)
-  def build(map) when is_map(map), do: struct(%__MODULE__{}, map)
+  # idempotent: an already-built Object passes through unchanged
+  def build(%__MODULE__{} = object), do: object
+  def build(map) when is_map(map) and not is_struct(map), do: struct(%__MODULE__{}, map)
 
   @doc """
   Detect the content type of an Object.

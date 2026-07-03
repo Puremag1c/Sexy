@@ -129,9 +129,15 @@ defmodule Sexy.Utils.Bot do
   @spec get_message_media(map(), String.t()) :: String.t() | nil
   def get_message_media(msg, type) do
     case type do
-      "video" -> msg.video.file_id
-      "photo" -> get_photo_id(msg.photo)
-      any -> Logger.debug("get_message_media: unknown media type #{any}")
+      "video" ->
+        msg.video.file_id
+
+      "photo" ->
+        get_photo_id(msg.photo)
+
+      any ->
+        Logger.debug("get_message_media: unknown media type #{any}")
+        nil
     end
   end
 

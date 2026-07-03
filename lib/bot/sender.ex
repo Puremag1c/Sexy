@@ -34,6 +34,12 @@ defmodule Sexy.Bot.Sender do
   @doc """
   Send an Object (or list of Objects) to Telegram.
 
+  For a list, returns the list of per-item responses (in order), so partial
+  failures are visible to the caller.
+
+  A rate-limited request (Telegram 429) is retried once after the
+  `retry_after` interval Telegram asks for; the call blocks for that time.
+
   ## Options
 
     * `:update_mid` — `true` (default) to delete old message and save new mid,
@@ -41,11 +47,12 @@ defmodule Sexy.Bot.Sender do
   """
   @type tg_response :: map()
 
-  @spec deliver(Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()], keyword()) :: tg_response() | :ok
+  @spec deliver(Sexy.Utils.Object.t() | [Sexy.Utils.Object.t()], keyword()) ::
+          tg_response() | [tg_response() | :ok] | :ok
   def deliver(items, opts \\ [])
 
   def deliver(items, opts) when is_list(items) do
-    Enum.each(items, &deliver(&1, opts))
+    Enum.map(items, &deliver(&1, opts))
   end
 
   def deliver(%{chat_id: nil} = item, _opts) do
@@ -56,7 +63,7 @@ defmodule Sexy.Bot.Sender do
     update_mid = Keyword.get(opts, :update_mid, true)
     objtype = Utils.Object.detect_object_type(object)
     {parse, text} = parse_mode(object)
-    message = send_by_type(objtype, object, parse, text)
+    message = send_with_retry(objtype, object, parse, text)
 
     case message do
       %{"ok" => true} ->
@@ -68,6 +75,22 @@ defmodule Sexy.Bot.Sender do
     end
 
     message
+  end
+
+  # Telegram rate limit: wait the advertised retry_after once and retry.
+  # ponytail: single retry, blocking sleep — a queued/throttled sender is the
+  # upgrade path if broadcasts outgrow this.
+  defp send_with_retry(objtype, object, parse, text) do
+    case send_by_type(objtype, object, parse, text) do
+      %{"ok" => false, "error_code" => 429, "parameters" => %{"retry_after" => s}}
+      when is_number(s) ->
+        Logger.warning("Sexy.Bot.Sender | rate limited, retrying in #{s}s")
+        Process.sleep(round(s * 1000))
+        send_by_type(objtype, object, parse, text)
+
+      message ->
+        message
+    end
   end
 
   defp parse_mode(%{entity: [], text: text}), do: {"HTML", text}

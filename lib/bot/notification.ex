@@ -61,6 +61,10 @@ defmodule Sexy.Bot.Notification do
     - `extra_buttons: [[%{text: ..., ...}]]` — extra button rows appended after navigate/dismiss
     - `dismiss_text: "text"` — custom dismiss button text
     - `after: seconds` — auto-delete the notification after delay
+
+  Returns the Telegram response of the send. If the message was sent but the
+  buttons could not be attached, returns that error map (`"ok" => false`) with
+  `"result"` holding the sent message, so `message_id` stays available.
   """
   @type navigate_opt :: {String.t(), String.t()} | {String.t(), (integer() -> String.t())}
 
@@ -86,14 +90,28 @@ defmodule Sexy.Bot.Notification do
       %{"ok" => true} ->
         mid = response["result"]["message_id"]
         buttons = build_buttons(chat_id, mid, opts)
-        edit_buttons(chat_id, mid, buttons)
+        attached = edit_buttons(chat_id, mid, buttons)
         maybe_schedule_delete(chat_id, mid, opts)
+
+        case attached do
+          %{"ok" => false} = error ->
+            # The message went out but has no dismiss/navigate buttons — surface
+            # the partial failure ("ok" => false) while keeping the sent
+            # message's result (mid) available to the caller.
+            Logger.error(
+              "Sexy.Bot.Notification | failed to attach buttons: #{error["description"]}"
+            )
+
+            Map.put(error, "result", response["result"])
+
+          _ ->
+            response
+        end
 
       _ ->
         Logger.warning("Sexy.Bot.Notification | send failed: #{inspect(response)}")
+        response
     end
-
-    response
   end
 
   defp build_buttons(_chat_id, mid, opts) do

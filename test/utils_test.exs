@@ -1,6 +1,8 @@
 defmodule Sexy.UtilsTest do
   use ExUnit.Case, async: true
 
+  doctest Sexy.Utils
+
   alias Sexy.Utils
 
   # ── get_query/1 ──────────────────────────────────────────────
@@ -60,8 +62,13 @@ defmodule Sexy.UtilsTest do
       assert Utils.split_query("id=1-no_such_key_zzz=2") == %{id: 1}
     end
 
-    test "drops malformed pairs without '='" do
-      assert Utils.split_query("id=1-garbage") == %{id: 1}
+    test "trailing dash-fragment without '=' belongs to the value" do
+      # 0.10.0: '-' splits pairs only before a key= sequence
+      assert Utils.split_query("id=1-garbage") == %{id: "1-garbage"}
+    end
+
+    test "drops a standalone fragment without '='" do
+      assert Utils.split_query("garbage") == %{}
     end
   end
 
@@ -205,6 +212,35 @@ defmodule Sexy.UtilsTest do
     test "roundtrip with all-f UUID" do
       uuid = "ffffffff-ffff-ffff-ffff-ffffffffffff"
       assert uuid == uuid |> Utils.stringify_uuid() |> Utils.normalize_uuid()
+    end
+  end
+
+  # ── query round-trip with dashes in values ───────────────────
+
+  describe "query round-trip" do
+    test "negative values survive stringify → split" do
+      query = %{id: -1_001_234, page: 2}
+      assert query |> Utils.stringify_query() |> Utils.split_query() == query
+    end
+
+    test "dash inside a string value survives" do
+      assert Utils.split_query("name=foo-bar") == %{name: "foo-bar"}
+    end
+
+    test "UUID-like value with dashes survives" do
+      assert Utils.split_query("name=550e8400-e29b-41d4-page=2") ==
+               %{name: "550e8400-e29b-41d4", page: 2}
+    end
+  end
+
+  # ── fiat_chunk sign handling ────────────────────────────────
+
+  describe "fiat_chunk/2 negative numbers" do
+    test "minus stays attached at 3/6-digit boundaries" do
+      assert Utils.fiat_chunk(-123, 0) == "-123"
+      assert Utils.fiat_chunk(-123_456, 0) == "-123 456"
+      assert Utils.fiat_chunk(-1234, 0) == "-1 234"
+      assert Utils.fiat_chunk(-123.45, 2) == "-123.45"
     end
   end
 end

@@ -1,6 +1,8 @@
 defmodule Sexy.Utils.ObjectTest do
   use ExUnit.Case, async: true
 
+  doctest Sexy.Utils.Object
+
   alias Sexy.Utils.Object
 
   describe "struct defaults" do
@@ -88,6 +90,17 @@ defmodule Sexy.Utils.ObjectTest do
 
     test "non-binary media does not crash → unknown" do
       assert Object.detect_object_type(%Object{media: {:photo, "/tmp/x.jpg"}}) == "unknown"
+    end
+  end
+
+  describe "build/1 idempotence" do
+    test "an already-built Object passes through unchanged" do
+      object = Object.build(%{chat_id: 1, text: "hi"})
+      assert Object.build(object) == object
+    end
+
+    test "a foreign struct raises FunctionClauseError, not a protocol error" do
+      assert_raise FunctionClauseError, fn -> Object.build(~D[2026-01-01]) end
     end
   end
 end

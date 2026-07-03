@@ -226,4 +226,32 @@ defmodule Sexy.Bot.NotificationTest do
       assert result["ok"] == true
     end
   end
+
+  # ── Partial failure: buttons could not be attached ──────────
+
+  describe "notify/3 when edit_reply_markup fails" do
+    test "returns ok=false while keeping the sent message's result", %{bypass: bypass} do
+      Bypass.expect(bypass, "POST", "/sendMessage", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_msg(500))
+      end)
+
+      Bypass.expect(bypass, "POST", "/editMessageReplyMarkup", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          400,
+          Jason.encode!(%{"ok" => false, "description" => "BUTTON_DATA_INVALID"})
+        )
+      end)
+
+      result = Sexy.Bot.Notification.notify(123, %{text: "oops"})
+
+      assert result["ok"] == false
+      assert result["description"] == "BUTTON_DATA_INVALID"
+      # mid of the actually-sent message stays available
+      assert result["result"]["message_id"] == 500
+    end
+  end
 end

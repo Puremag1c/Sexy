@@ -1,6 +1,8 @@
 defmodule Sexy.Utils.BotTest do
   use ExUnit.Case, async: true
 
+  doctest Sexy.Utils.Bot
+
   alias Sexy.Utils.Bot
 
   # ── get_command_name/1 ───────────────────────────────────────
@@ -188,6 +190,12 @@ defmodule Sexy.Utils.BotTest do
     test "page size larger than list" do
       items = Enum.to_list(1..5)
       assert Bot.paginate(items, 1, 100) == Enum.to_list(1..5)
+    end
+  end
+
+  describe "get_message_media/2 unsupported type" do
+    test "returns nil (not :ok) per the contract" do
+      assert Bot.get_message_media(%{}, "audio") == nil
     end
   end
 end

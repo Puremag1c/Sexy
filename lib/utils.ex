@@ -50,10 +50,17 @@ defmodule Sexy.Utils do
   @doc """
   Parse a query string in `"key=val-key=val"` format into an atom-keyed map.
 
+  Values may contain `-` (negative numbers, UUIDs, dates): a `-` splits pairs
+  only when followed by a `key=` sequence. The character sequence `-<key>=`
+  inside a value is reserved as the pair separator; `=` in values is not supported.
+
   ## Examples
 
       iex> Sexy.Utils.split_query("id=42-name=hello")
       %{id: 42, name: "hello"}
+
+      iex> Sexy.Utils.split_query("id=-1001234-page=2")
+      %{id: -1001234, page: 2}
 
       iex> Sexy.Utils.split_query(nil)
       %{}
@@ -63,7 +70,7 @@ defmodule Sexy.Utils do
 
   def split_query(query_string) do
     query_string
-    |> String.split("-")
+    |> String.split(~r/-(?=[A-Za-z_][A-Za-z0-9_]*=)/)
     |> Enum.flat_map(&split_keyword/1)
     |> Enum.into(%{})
   end
@@ -142,7 +149,8 @@ defmodule Sexy.Utils do
   Used internally to normalize Telegram API responses and TDLib JSON before processing.
   """
   @spec strip(map() | struct() | list() | term()) :: map() | list() | term()
-  def strip(map) when is_non_struct_map(map) do
+  # not is_non_struct_map/1: that guard needs Elixir 1.17+, mix.exs promises 1.14
+  def strip(map) when is_map(map) and not is_struct(map) do
     Enum.reduce(map, %{}, fn {k, v}, acc ->
       if is_atom(k),
         do: Map.put(acc, k, strip(v)),
@@ -194,6 +202,10 @@ defmodule Sexy.Utils do
     format_integer_part(int_part) <> "." <> dec_part
   end
 
+  # Strip the sign before chunking so "-123456" formats as "-123 456",
+  # not "- 123 456" (the reversed "-" used to land in its own chunk).
+  defp format_integer_part("-" <> str), do: "-" <> format_integer_part(str)
+
   defp format_integer_part(str) do
     str
     |> String.to_charlist()
@@ -221,7 +233,7 @@ defmodule Sexy.Utils do
   ## Example
 
       iex> Sexy.Utils.stringify_uuid("550e8400-e29b-41d4-a716-446655440000")
-      "2DEf3recbEMh3MaqjC1UDI"
+      "2aUyqjCzEIiEcYMKj7TZtw"
   """
   @spec stringify_uuid(String.t()) :: String.t()
   def stringify_uuid(uuid) when is_binary(uuid) do
@@ -237,7 +249,7 @@ defmodule Sexy.Utils do
 
   ## Example
 
-      iex> Sexy.Utils.normalize_uuid("2DEf3recbEMh3MaqjC1UDI")
+      iex> Sexy.Utils.normalize_uuid("2aUyqjCzEIiEcYMKj7TZtw")
       "550e8400-e29b-41d4-a716-446655440000"
   """
   @spec normalize_uuid(String.t()) :: String.t()

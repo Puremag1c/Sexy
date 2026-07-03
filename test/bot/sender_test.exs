@@ -315,7 +315,8 @@ defmodule Sexy.Bot.SenderTest do
         %Object{chat_id: 2, text: "second"}
       ]
 
-      assert :ok = Sender.deliver(objects)
+      # 0.10.0: list delivery returns per-item responses instead of :ok
+      assert [%{"ok" => true}, %{"ok" => true}] = Sender.deliver(objects)
     end
   end
 
@@ -362,6 +363,78 @@ defmodule Sexy.Bot.SenderTest do
       object = %Object{chat_id: 123, text: "fresh"}
       result = Sender.deliver(object)
       assert result["ok"] == true
+    end
+  end
+
+  # ── List delivery returns per-item results ──────────────────
+
+  describe "deliver/2 with a list" do
+    test "returns per-item responses, partial failures visible", %{bypass: bypass} do
+      Bypass.expect(bypass, "POST", "/sendMessage", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+        response =
+          case Jason.decode!(body) do
+            %{"chat_id" => 1} -> %{"ok" => true, "result" => %{"message_id" => 1}}
+            %{"chat_id" => 2} -> %{"ok" => false, "error_code" => 403, "description" => "blocked"}
+          end
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(response))
+      end)
+
+      objects = [%Object{chat_id: 1, text: "a"}, %Object{chat_id: 2, text: "b"}]
+      assert [ok, error] = Sender.deliver(objects, update_mid: false)
+      assert ok["ok"] == true
+      assert error["ok"] == false
+      assert error["description"] == "blocked"
+    end
+  end
+
+  # ── 429 retry ───────────────────────────────────────────────
+
+  describe "deliver/2 rate limiting" do
+    test "retries once after retry_after on 429", %{bypass: bypass} do
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Bypass.expect(bypass, "POST", "/sendMessage", fn conn ->
+        attempt = Agent.get_and_update(counter, fn n -> {n + 1, n + 1} end)
+
+        response =
+          if attempt == 1 do
+            %{"ok" => false, "error_code" => 429, "parameters" => %{"retry_after" => 0}}
+          else
+            %{"ok" => true, "result" => %{"message_id" => 7}}
+          end
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(response))
+      end)
+
+      result = Sender.deliver(%Object{chat_id: 9, text: "x"}, update_mid: false)
+      assert result["ok"] == true
+      assert Agent.get(counter, & &1) == 2
+    end
+
+    test "429 without parameters is returned as-is, no retry", %{bypass: bypass} do
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Bypass.expect(bypass, "POST", "/sendMessage", fn conn ->
+        Agent.update(counter, &(&1 + 1))
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          429,
+          Jason.encode!(%{"ok" => false, "error_code" => 429, "description" => "Too Many"})
+        )
+      end)
+
+      result = Sender.deliver(%Object{chat_id: 9, text: "x"}, update_mid: false)
+      assert result["ok"] == false
+      assert Agent.get(counter, & &1) == 1
     end
   end
 end
