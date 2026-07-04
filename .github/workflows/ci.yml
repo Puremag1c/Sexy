@@ -28,9 +28,7 @@ jobs:
       - run: mix compile --warnings-as-errors
       - run: mix format --check-formatted
       - run: mix credo --strict
-      # Audit the SHIPPED supply chain only — prod deps. Test-only tooling
-      # (bypass -> cowboy/cowlib) never reaches consumers.
-      - run: MIX_ENV=prod mix hex.audit
+      - run: mix hex.audit
 
   test:
     name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
