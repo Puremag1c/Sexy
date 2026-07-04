@@ -253,5 +253,35 @@ defmodule Sexy.Bot.NotificationTest do
       # mid of the actually-sent message stays available
       assert result["result"]["message_id"] == 500
     end
+
+    test "429 on button attach is retried once, then buttons stick", %{bypass: bypass} do
+      Bypass.expect(bypass, "POST", "/sendMessage", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_msg(500))
+      end)
+
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Bypass.expect(bypass, "POST", "/editMessageReplyMarkup", fn conn ->
+        attempt = Agent.get_and_update(counter, fn n -> {n + 1, n + 1} end)
+
+        body =
+          if attempt == 1 do
+            %{"ok" => false, "error_code" => 429, "parameters" => %{"retry_after" => 0}}
+          else
+            %{"ok" => true, "result" => %{"message_id" => 500}}
+          end
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(body))
+      end)
+
+      result = Sexy.Bot.Notification.notify(123, %{text: "hi"})
+
+      assert result["ok"] == true
+      assert Agent.get(counter, & &1) == 2
+    end
   end
 end

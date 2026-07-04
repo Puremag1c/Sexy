@@ -81,16 +81,7 @@ defmodule Sexy.Bot.Sender do
   # ponytail: single retry, blocking sleep — a queued/throttled sender is the
   # upgrade path if broadcasts outgrow this.
   defp send_with_retry(objtype, object, parse, text) do
-    case send_by_type(objtype, object, parse, text) do
-      %{"ok" => false, "error_code" => 429, "parameters" => %{"retry_after" => s}}
-      when is_number(s) ->
-        Logger.warning("Sexy.Bot.Sender | rate limited, retrying in #{s}s")
-        Process.sleep(round(s * 1000))
-        send_by_type(objtype, object, parse, text)
-
-      message ->
-        message
-    end
+    Api.with_429_retry(fn -> send_by_type(objtype, object, parse, text) end)
   end
 
   defp parse_mode(%{entity: [], text: text}), do: {"HTML", text}

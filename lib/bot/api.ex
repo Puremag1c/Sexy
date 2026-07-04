@@ -30,6 +30,28 @@ defmodule Sexy.Bot.Api do
 
   @type tg_response :: map()
 
+  @doc """
+  Run `fun` (an API call returning a `tg_response`) and, on a Telegram 429 rate
+  limit, sleep the advertised `retry_after` and try once more.
+
+  Safe to retry: a 429 means the request was rejected, not executed, and both
+  send and edit are idempotent. Non-429 responses (incl. permanent errors like
+  `BUTTON_DATA_INVALID`) are returned unchanged — no retry.
+  """
+  @spec with_429_retry((-> tg_response())) :: tg_response()
+  def with_429_retry(fun) do
+    case fun.() do
+      %{"ok" => false, "error_code" => 429, "parameters" => %{"retry_after" => s}}
+      when is_number(s) ->
+        Logger.warning("Sexy.Bot.Api | rate limited, retrying in #{s}s")
+        Process.sleep(round(s * 1000))
+        fun.()
+
+      response ->
+        response
+    end
+  end
+
   # ── Internal HTTP ──────────────────────────────────────────────
 
   defp api_url do

@@ -143,13 +143,18 @@ defmodule Sexy.Bot.Notification do
   defp edit_buttons(_chat_id, _mid, []), do: :ok
 
   defp edit_buttons(chat_id, mid, buttons) do
-    %{
-      chat_id: chat_id,
-      message_id: mid,
-      reply_markup: %{inline_keyboard: buttons}
-    }
-    |> Jason.encode!()
-    |> Api.edit_reply_markup()
+    # Retry once on 429: editMessageReplyMarkup is idempotent, so a rate-limited
+    # button attach is safe to repeat — otherwise the notification is left
+    # without its dismiss/navigate buttons.
+    Api.with_429_retry(fn ->
+      %{
+        chat_id: chat_id,
+        message_id: mid,
+        reply_markup: %{inline_keyboard: buttons}
+      }
+      |> Jason.encode!()
+      |> Api.edit_reply_markup()
+    end)
   end
 
   defp transit_callback(mid, path) do

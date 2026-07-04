@@ -38,4 +38,25 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypesTest do
       assert File.read!("lib/tdl/object.ex") == object
     end)
   end
+
+  @tag :tmp_dir
+  test "a non-identifier type/field name is rejected, not injected", %{tmp_dir: tmp} do
+    File.cd!(tmp, fn ->
+      types = %{
+        "evil" => %{
+          "type" => "object",
+          "url" => "https://example.com",
+          "desc" => "ok",
+          # non-identifier name carrying an interpolation marker
+          "fields" => [%{"name" => "x\#{System.halt(0)}", "type" => "int", "desc" => "d"}]
+        }
+      }
+
+      File.write!("types.json", Jason.encode!(types))
+
+      assert_raise RuntimeError, ~r/invalid identifier/, fn ->
+        Mix.Tasks.Sexy.Tdl.GenerateTypes.run([])
+      end
+    end)
+  end
 end

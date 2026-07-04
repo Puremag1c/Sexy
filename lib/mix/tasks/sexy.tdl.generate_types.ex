@@ -92,6 +92,7 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
   end
 
   defp build_type(key, json_type) do
+    key = identifier!(key)
     module_name = Sexy.Utils.titlecase_once(key)
 
     %{"url" => url, "fields" => fields} = json_type
@@ -133,9 +134,20 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
     |> String.replace(~s("""), ~s(\\"""))
   end
 
+  # Type and field names become module names and struct keys — escaping can't
+  # make an arbitrary string a safe identifier, so validate instead: a name that
+  # isn't a plain identifier can't inject code via #{module_name}/defstruct.
+  defp identifier!(name) do
+    if is_binary(name) and Regex.match?(~r/^[A-Za-z_][A-Za-z0-9_]*$/, name) do
+      name
+    else
+      raise "invalid identifier in types.json: #{inspect(name)}"
+    end
+  end
+
   defp build_fields_string(list) do
     List.foldl(list, "", fn field, acc ->
-      acc <> ", #{Map.get(field, "name")}: nil"
+      acc <> ", #{identifier!(Map.get(field, "name"))}: nil"
     end)
   end
 
@@ -148,7 +160,7 @@ defmodule Mix.Tasks.Sexy.Tdl.GenerateTypes do
     table_lines =
       list
       |> Enum.map(fn m ->
-        "| #{Map.get(m, "name")} | #{escape_doc(Map.get(m, "type"))} | #{escape_doc(Map.get(m, "desc"))} |\n"
+        "| #{escape_doc(Map.get(m, "name"))} | #{escape_doc(Map.get(m, "type"))} | #{escape_doc(Map.get(m, "desc"))} |\n"
       end)
       |> List.to_string()
 
