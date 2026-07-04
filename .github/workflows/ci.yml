@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [master]
 
-env:
-  MIX_ENV: test
-
 jobs:
   lint:
     name: Lint (format, warnings, credo, deps)
@@ -31,13 +28,17 @@ jobs:
       - run: mix compile --warnings-as-errors
       - run: mix format --check-formatted
       - run: mix credo --strict
-      - run: mix hex.audit
+      # Audit the SHIPPED supply chain only — prod deps. Test-only tooling
+      # (bypass -> cowboy/cowlib) never reaches consumers.
+      - run: MIX_ENV=prod mix hex.audit
 
   test:
     name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
     # Matrix guards the declared `elixir: "~> 1.14"` floor as well as current.
     # Old Elixir/OTP have no prebuilt binaries on ubuntu-latest, so pin the OS.
     runs-on: ${{ matrix.os }}
+    env:
+      MIX_ENV: test
     strategy:
       fail-fast: false
       matrix:
