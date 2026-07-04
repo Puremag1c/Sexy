@@ -8,7 +8,7 @@ defmodule Sexy.MixProject do
     [
       app: :sexy,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: [

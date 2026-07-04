@@ -149,8 +149,7 @@ defmodule Sexy.Utils do
   Used internally to normalize Telegram API responses and TDLib JSON before processing.
   """
   @spec strip(map() | struct() | list() | term()) :: map() | list() | term()
-  # not is_non_struct_map/1: that guard needs Elixir 1.17+, mix.exs promises 1.14
-  def strip(map) when is_map(map) and not is_struct(map) do
+  def strip(map) when is_non_struct_map(map) do
     Enum.reduce(map, %{}, fn {k, v}, acc ->
       if is_atom(k),
         do: Map.put(acc, k, strip(v)),

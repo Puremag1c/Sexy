@@ -32,21 +32,18 @@ jobs:
 
   test:
     name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
-    # Matrix guards the declared `elixir: "~> 1.14"` floor as well as current.
-    # Old Elixir/OTP have no prebuilt binaries on ubuntu-latest, so pin the OS.
-    runs-on: ${{ matrix.os }}
+    # Full suite on the declared `elixir: "~> 1.17"` floor and on current.
+    runs-on: ubuntu-latest
     env:
       MIX_ENV: test
     strategy:
       fail-fast: false
       matrix:
         include:
-          - elixir: "1.14"
-            otp: "25"
-            os: ubuntu-22.04
+          - elixir: "1.17"
+            otp: "27"
           - elixir: "1.19"
             otp: "28"
-            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1

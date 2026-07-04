@@ -9,10 +9,14 @@ Completes two 0.10.0 fixes flagged by fix-verification, plus test coverage and a
 - `notify/3` now retries the button attach once on a 429 (via shared `Api.with_429_retry/1`), matching the send path; permanent errors (`BUTTON_DATA_INVALID`) are not retried.
 - `mix sexy.tdl.generate_types` validates type/field names as identifiers, closing a code-injection vector that doc escaping alone left open.
 
+### Changed
+
+- Requires Elixir 1.17+ (was 1.14). `Sexy.Utils.strip/1` uses the `is_non_struct_map/1` guard again.
+
 ### Internal
 
 - Regression tests for `Sexy.Bot.Config` (config erased on stop; offset ref survives a restart), boot validation, and `Sexy.TDL.Backend` line parsing.
-- Strict CI: `mix format --check-formatted` (fails instead of auto-formatting and pushing), `credo --strict`, `dialyzer`, `deps.unlock --check-unused`, `hex.audit`, and a test matrix on the declared Elixir floor (1.14) and current (1.19).
+- Strict CI: `mix format --check-formatted` (fails instead of auto-formatting and pushing), `credo --strict`, `dialyzer`, `deps.unlock --check-unused`, `hex.audit`, and a test matrix on the Elixir floor (1.17) and current (1.19).
 
 ## 0.10.0
 
