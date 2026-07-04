@@ -46,7 +46,7 @@ defmodule Sexy.Bot.NotificationTest do
 
         kb = decoded["reply_markup"]["inline_keyboard"]
         # Should have dismiss row with "OK" button
-        assert length(kb) >= 1
+        assert kb != []
 
         dismiss_row = List.last(kb)
         [dismiss_btn] = dismiss_row

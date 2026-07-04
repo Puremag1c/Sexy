@@ -1,7 +1,7 @@
 defmodule Sexy.MixProject do
   use Mix.Project
 
-  @version "0.10.0"
+  @version "0.10.1"
   @source_url "https://github.com/Puremag1c/Sexy"
 
   def project do
@@ -11,6 +11,11 @@ defmodule Sexy.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      dialyzer: [
+        plt_add_apps: [:mix, :ex_unit],
+        plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
+        ignore_warnings: ".dialyzer_ignore.exs"
+      ],
       name: "Sexy",
       description: description(),
       package: package(),
@@ -90,6 +95,7 @@ defmodule Sexy.MixProject do
       {:base62, "~> 1.2"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mox, "~> 1.0", only: :test},
       {:bypass, "~> 2.1", only: :test}
     ]

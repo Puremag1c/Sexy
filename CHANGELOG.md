@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.1
+
+Completes two 0.10.0 fixes flagged by fix-verification, plus test coverage and a strict CI.
+
+### Fixed
+
+- `notify/3` now retries the button attach once on a 429 (via shared `Api.with_429_retry/1`), matching the send path; permanent errors (`BUTTON_DATA_INVALID`) are not retried.
+- `mix sexy.tdl.generate_types` validates type/field names as identifiers, closing a code-injection vector that doc escaping alone left open.
+
+### Internal
+
+- Regression tests for `Sexy.Bot.Config` (config erased on stop; offset ref survives a restart), boot validation, and `Sexy.TDL.Backend` line parsing.
+- Strict CI: `mix format --check-formatted` (fails instead of auto-formatting and pushing), `credo --strict`, `dialyzer`, `deps.unlock --check-unused`, `hex.audit`, and a test matrix on the declared Elixir floor (1.14) and current (1.19).
+
 ## 0.10.0
 
 Reliability release: 37 audited defects fixed. **Breaking changes** — see
@@ -18,10 +32,10 @@ Reliability release: 37 audited defects fixed. **Breaking changes** — see
 - **Poller:** a malformed update (e.g. `callback_query` without `data`) crash-looped the poller and took down the consumer's supervision tree via offset-0 replay. All update parsing now runs in supervised tasks; the offset survives restarts (atomics); the loop is driven by `send_after` and ignores stray messages instead of crashing (or stalling — the old GenServer-timeout loop was cancelled by any message).
 - **Api:** all methods (not just `get_updates`) return the documented error map on non-JSON responses instead of raising `Jason.DecodeError`; transport-error descriptions no longer crash on tuple reasons.
 - **Payments:** optional Session callbacks are resolved reliably (session module loaded at boot); `handle_poll` is guarded like the other optional callbacks; `poll_answer` updates are routed to `handle_poll` instead of being dropped; built-in `/_delete`//`_transit` no-op on forged/malformed callback data, and `/_transit` verifies the handler exists *before* deleting the message.
-- **Rate limits:** sends and `notify/3` button-attach retry once after Telegram's `retry_after` on 429 (shared `Api.with_429_retry/1`); permanent errors like `BUTTON_DATA_INVALID` are not retried.
+- **Rate limits:** sends retry once after Telegram's `retry_after` on 429.
 - **Query format:** `-` inside values (negative chat ids, UUIDs, dates) no longer corrupts parsing — pairs split only on `-` followed by `key=`; the library's own `navigate:` flow round-trips.
 - **TDL:** `close/1` resurrected the session (permanent child of a DynamicSupervisor) or crash-looped all sessions — now terminates for real; Backend/Handler init no longer `MatchError`-crash-loops when the registry entry is gone; tdlib binary death is detected in non-proxy mode (`:exit_status`) and restarts the pair via the Riser's `one_for_all` (was: silent zombie); system/proxy events go directly to `app_pid` (were undeliverable on cold start/restart); Registry monitors session supervisors and drops dead entries; `transmit/2` returns `{:error, :no_backend}` instead of `:noproc`-exiting the caller; nested `vector<vector<T>>` fields (inline keyboards) deserialize recursively.
-- **Codegen:** output directory is created (`mkdir_p`); generation writes atomically (malformed `types.json` can't destroy previous files); doc text is escaped and type/field names are validated as identifiers, closing a compile-time code-execution hole; setup prompts handle `:eof` with a clear error.
+- **Codegen:** output directory is created (`mkdir_p`); generation writes atomically (malformed `types.json` can't destroy previous files); doc text is escaped, closing a compile-time code-execution hole; setup prompts handle `:eof` with a clear error.
 - **Utils:** `fiat_chunk(-123456, 0)` renders `"-123 456"` instead of `"- 123 456"`; `get_message_media/2` returns `nil` (not `:ok`) for unsupported types; `Object.build/1` is idempotent for already-built Objects.
 - **Compatibility:** removed an Elixir 1.17+ guard (`is_non_struct_map/1`) — the declared `~> 1.14` support is real again.
 - **Lifecycle:** persistent_term config is erased when the bot stops (a stopped bot no longer sends with a stale token); delayed deletions run under a supervised Task.Supervisor.

@@ -6,39 +6,87 @@ on:
   pull_request:
     branches: [master]
 
-permissions:
-  contents: write
+env:
+  MIX_ENV: test
 
 jobs:
-  build:
+  lint:
+    name: Lint (format, warnings, credo, deps)
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "28"
           elixir-version: "1.19"
-
-      - name: Cache deps
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
+          key: ${{ runner.os }}-lint-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-lint-
+      - run: mix deps.get
+      - run: mix deps.unlock --check-unused
+      - run: mix compile --warnings-as-errors
+      - run: mix format --check-formatted
+      - run: mix credo --strict
+      - run: mix hex.audit
 
+  test:
+    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    # Matrix guards the declared `elixir: "~> 1.14"` floor as well as current.
+    # Old Elixir/OTP have no prebuilt binaries on ubuntu-latest, so pin the OS.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - elixir: "1.14"
+            otp: "25"
+            os: ubuntu-22.04
+          - elixir: "1.19"
+            otp: "28"
+            os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-test-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-test-${{ matrix.elixir }}-${{ matrix.otp }}-
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
-      - run: mix format
-      - name: Commit formatting changes
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git diff --quiet || (git add -A && git commit -m "style: auto-format" && git push)
-        if: github.event_name == 'push'
       - run: mix test
+
+  dialyzer:
+    name: Dialyzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "28"
+          elixir-version: "1.19"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-dialyzer-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-dialyzer-
+      # PLT is expensive to build — cache it, keyed on the toolchain + deps.
+      - uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-plt-otp28-ex1.19-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-plt-otp28-ex1.19-
+      - run: mix deps.get
+      - run: mix dialyzer --plt
+      - run: mix dialyzer --format github

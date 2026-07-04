@@ -197,13 +197,13 @@ defmodule Sexy.Bot.ApiTest do
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
           200,
-          Jason.encode!(%{"ok" => true, "result" => %{"id" => 12345, "is_bot" => true}})
+          Jason.encode!(%{"ok" => true, "result" => %{"id" => 12_345, "is_bot" => true}})
         )
       end)
 
       result = Api.get_me()
       assert result["ok"] == true
-      assert result["result"]["id"] == 12345
+      assert result["result"]["id"] == 12_345
     end
   end
 

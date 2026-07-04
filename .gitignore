@@ -22,3 +22,7 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 sexy-*.tar
 
+
+# Dialyzer PLT files (rebuilt in CI)
+/priv/plts/*.plt
+/priv/plts/*.plt.hash
