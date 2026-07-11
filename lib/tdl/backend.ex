@@ -152,6 +152,12 @@ defmodule Sexy.TDL.Backend do
       json_line?(text) and handler_pid ->
         send(handler_pid, {:backend, text})
 
+      match?(%{code: 0}, error) ->
+        # code 0 is a TDLib internal diagnostic (e.g. "Error: 0: Ping timeout
+        # expired"), not a Telegram API error — log, never forward it as an
+        # Object.Error, or the app sees a false error.
+        Logger.debug("#{name}: TDLib internal: #{error.message}")
+
       error != :no_error and handler_pid ->
         send(handler_pid, {:backend, Jason.encode!(error)})
         Logger.warning("#{name}: TDLib error: code=#{error.code} reason=#{error.message}")
@@ -181,9 +187,14 @@ defmodule Sexy.TDL.Backend do
   defp json_line?(text), do: text |> String.trim_leading() |> String.starts_with?("{")
 
   defp parse_tdlib_error(text) do
-    case Regex.run(~r/Error\s*:\s*(\d+)\s*:\s*([A-Z0-9_]+)/, text) do
-      [_, code, reason] -> %{"@type": "error", code: String.to_integer(code), message: reason}
-      _ -> :no_error
+    # message is the rest of the line, not just [A-Z0-9_] — otherwise
+    # "Error: 0: Ping timeout expired" truncates to "P".
+    case Regex.run(~r/Error\s*:\s*(\d+)\s*:\s*(.+)/, text) do
+      [_, code, reason] ->
+        %{"@type": "error", code: String.to_integer(code), message: String.trim(reason)}
+
+      _ ->
+        :no_error
     end
   end
 end

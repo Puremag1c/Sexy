@@ -115,13 +115,13 @@ defmodule Sexy.Bot.Poller do
   end
 
   defp process_messages({:error, error}, offset) do
-    Logger.log(:error, inspect(error))
+    Logger.log(:error, "Sexy.Bot.Poller | getUpdates failed: #{inspect(error)}")
 
     {offset, @backoff}
   end
 
   defp process_messages(:error, offset) do
-    Logger.log(:error, "Unexpected error format in poller")
+    Logger.log(:error, "Sexy.Bot.Poller | getUpdates returned an unexpected format")
 
     {offset, @backoff}
   end

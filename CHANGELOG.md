@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.2
+
+### Fixed
+
+- TDLib internal diagnostics (code `0`, e.g. `Error: 0: Ping timeout expired`) are no longer forwarded to the app as a fake `Object.Error` — they log at `debug`. Real Telegram API errors (400/401/…) are unaffected. This stops harmless TDLib noise from surfacing as application errors.
+- `Sexy.TDL.Backend` error parsing captures the full message instead of truncating at the first non-`[A-Z0-9_]` character (`Ping timeout expired` was becoming `P`).
+- `Sexy.Bot.Poller` getUpdates failures log with a `Sexy.Bot.Poller | getUpdates failed:` prefix instead of a bare `[error] :timeout`, so it's clear what timed out.
+
 ## 0.10.1
 
 Completes two 0.10.0 fixes flagged by fix-verification, plus test coverage and a strict CI.

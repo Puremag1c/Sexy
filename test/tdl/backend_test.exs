@@ -38,6 +38,17 @@ defmodule Sexy.TDL.BackendTest do
     assert %{"code" => 400, "message" => "CHAT_NOT_FOUND"} = Jason.decode!(json)
   end
 
+  test "captures a multi-word error message in full (not truncated)", %{state: state} do
+    Backend.handle_info({:p, {:data, {:eol, "Error: 401: Unauthorized: bot token bad"}}}, state)
+    assert_receive {:backend, json}
+    assert %{"code" => 401, "message" => "Unauthorized: bot token bad"} = Jason.decode!(json)
+  end
+
+  test "code 0 is a TDLib internal diagnostic — not forwarded as an error", %{state: state} do
+    Backend.handle_info({:p, {:data, {:eol, "Error: 0: Ping timeout expired"}}}, state)
+    refute_receive {:backend, _}, 100
+  end
+
   test "forwards proxychains output as a proxy event to app_pid", %{state: state} do
     Backend.handle_info({:p, {:data, {:eol, "[proxychains] DLL init"}}}, state)
     assert_receive {:proxy_event, "DLL init"}
