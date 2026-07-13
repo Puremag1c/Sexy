@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.3
+
+### Fixed
+
+- `Sexy.TDL.Backend` now distinguishes TDLib's internal connection/transport diagnostics from real API errors. Lines carrying transport framing (`FLOOD_WAIT` on `Connect::TCP → DcId`, ping timeouts) are TDLib retrying its own connection — it waits and reconnects itself, so they are logged at `debug` and **never forwarded** to the handler. Real API/auth errors (e.g. `ACCOUNT_FROZEN`, `FROZEN_METHOD_INVALID`) are still delivered unchanged, so consumer pipelines that act on them keep working. Fixes a warning/pipeline flood seen on **direct (non-proxy) connections** when Telegram throttles the connection frequency of the client's IP — surfaced since 0.10.0 added `:stderr_to_stdout` to the non-proxy port. Proxy sessions are unaffected.
+
 ## 0.10.2
 
 ### Fixed

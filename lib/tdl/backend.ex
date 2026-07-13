@@ -152,21 +152,26 @@ defmodule Sexy.TDL.Backend do
       json_line?(text) and handler_pid ->
         send(handler_pid, {:backend, text})
 
-      match?(%{code: 0}, error) ->
-        # code 0 is a TDLib internal diagnostic (e.g. "Error: 0: Ping timeout
-        # expired"), not a Telegram API error — log, never forward it as an
-        # Object.Error, or the app sees a false error.
-        Logger.debug("#{name}: TDLib internal: #{error.message}")
-
-      error != :no_error and handler_pid ->
-        send(handler_pid, {:backend, Jason.encode!(error)})
-        Logger.warning("#{name}: TDLib error: code=#{error.code} reason=#{error.message}")
-
       json_line?(text) ->
         Logger.warning("#{name}: incoming message but no handler registered")
 
+      (match?(%{code: 0}, error) or connection_noise?(text)) and not critical_error?(text) ->
+        # tdlib retries these itself (ping timeout code 0, FLOOD_WAIT on
+        # Connect::TCP → DcId) — the app can't act on them, so never forward or
+        # warn. Surfacing them as errors floods the log and the pipeline when
+        # the direct-connection IP is throttled by Telegram. critical_error?
+        # is the escape hatch: a freeze/ban is delivered even if it somehow
+        # rides a line with transport framing.
+        Logger.debug("#{name}: TDLib internal: #{text}")
+
+      error != :no_error and handler_pid ->
+        # Real API/auth errors (ACCOUNT_FROZEN, FROZEN_METHOD_INVALID, method
+        # FLOOD_WAIT…): deliver to the pipeline. The consumer logs and decides.
+        send(handler_pid, {:backend, Jason.encode!(error)})
+        Logger.debug("#{name}: TDLib error forwarded: code=#{error.code} reason=#{error.message}")
+
       true ->
-        Logger.warning("#{name}: unrecognized output: #{inspect(text)}")
+        Logger.debug("#{name}: TDLib: #{text}")
     end
   end
 
@@ -185,6 +190,17 @@ defmodule Sexy.TDL.Backend do
   defp strip_ansi(text), do: Regex.replace(~r/\e\[[0-9;]*m/, text, "")
 
   defp json_line?(text), do: text |> String.trim_leading() |> String.starts_with?("{")
+
+  # tdlib's connection/transport layer logs its own retries as "errors" (e.g.
+  # FLOOD_WAIT on Connect::TCP → DcId). They carry transport framing that real
+  # API/auth errors never do, so match on it to keep the noise out of the app.
+  defp connection_noise?(text),
+    do: String.contains?(text, "Connect::") or String.contains?(text, "DcId{")
+
+  # Account-state errors the consumer pipeline must always act on (freeze/ban):
+  # never suppressed as noise, even if the line also carries transport framing.
+  defp critical_error?(text),
+    do: String.contains?(text, ["FROZEN", "BANNED", "DEACTIVATED"])
 
   defp parse_tdlib_error(text) do
     # message is the rest of the line, not just [A-Z0-9_] — otherwise
