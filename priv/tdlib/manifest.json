@@ -1,0 +1,11 @@
+{
+  "tdlib_version": "1.8.66",
+  "tdlib_commit": "d8d46dfab55f40e2fcf30fc5cc7cd5950abe99e2",
+  "release_url": "https://github.com/Puremag1c/tdlib-json-cli/releases/download/td-1.8.66-d8d46dfab",
+  "targets": {
+    "linux-x64": {
+      "asset": "tdlib_json_cli-1.8.66-linux-x64",
+      "sha256": "c6beb8284775cf2200823d29cdaea85ab429f4c63182d57269e6b2445a5d7797"
+    }
+  }
+}

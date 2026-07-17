@@ -38,7 +38,7 @@ defmodule Sexy.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib mix.exs README.md CHANGELOG.md UPGRADING.md LICENSE)
+      files: ~w(lib priv/tdlib mix.exs README.md CHANGELOG.md UPGRADING.md LICENSE)
     ]
   end
 
