@@ -97,9 +97,14 @@ That's it. Sexy deletes the old message, sends the new one, and saves state via 
 ```elixir
 # config/config.exs
 config :sexy,
-  tdlib_binary: "/path/to/tdlib_json_cli",
   tdlib_data_root: "/path/to/tdlib_data"
 ```
+
+The `tdlib_json_cli` binary is downloaded automatically for your platform on
+first start (pinned and checksum-verified via `priv/tdlib/manifest.json`).
+Prefetch it in CI/Docker with `mix sexy.tdl.install`, or use your own build
+with `tdlib_binary: "/path/to/tdlib_json_cli"` — a configured path is
+authoritative and never falls back to auto-download.
 
 Or run the interactive setup: `mix sexy.tdl.setup`
 
@@ -435,6 +440,7 @@ Sexy.Utils.Object           Message struct + type detection
 | Task | Description |
 |------|-------------|
 | `mix sexy.tdl.setup` | Interactive TDLib configuration wizard |
+| `mix sexy.tdl.install` | Prefetch the prebuilt tdlib_json_cli binary (CI/Docker) |
 | `mix sexy.tdl.generate_types [path]` | Regenerate Method/Object structs from td_api.tl (or legacy types.json) |
 
 ---

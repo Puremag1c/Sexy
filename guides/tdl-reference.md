@@ -10,9 +10,15 @@ Two application-level keys (set in `config/config.exs` or via `mix sexy.tdl.setu
 
 ```elixir
 config :sexy,
-  tdlib_binary: "/usr/local/bin/tdlib_json_cli",  # required — raises at session start if missing
+  tdlib_binary: "/usr/local/bin/tdlib_json_cli",  # optional — omit to auto-download a prebuilt binary
   tdlib_data_root: "/tmp/tdlib_data"              # root for per-session files (proxy.conf)
 ```
+
+Without `:tdlib_binary`, `Sexy.TDL` downloads the platform binary pinned in
+`priv/tdlib/manifest.json` at startup into the user cache (sha256-verified;
+`SEXY_TDLIB_PATH` env overrides, `mix sexy.tdl.install` prefetches — see
+`Sexy.TDL.Binary`). A configured path is authoritative: if it is wrong the
+session fails, it does not fall back to auto-download.
 
 Per-session paths come from the `SetTdlibParameters` config you pass to `open/3`
 (`Sexy.TDL.default_config/0`):

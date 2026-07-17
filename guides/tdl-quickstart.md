@@ -4,15 +4,17 @@ Build a Telegram userbot with `Sexy.TDL`.
 
 ## Prerequisites
 
-- `tdlib_json_cli` binary installed (or built from TDLib source)
 - Telegram API credentials from [my.telegram.org](https://my.telegram.org)
+
+The `tdlib_json_cli` binary is downloaded automatically for your platform on
+first start (checksum-verified; prefetch with `mix sexy.tdl.install` in
+CI/Docker). Only set `:tdlib_binary` if you want your own build.
 
 ## 1. Configure
 
 ```elixir
 # config/config.exs
 config :sexy,
-  tdlib_binary: "/usr/local/bin/tdlib_json_cli",
   tdlib_data_root: "/tmp/tdlib_data"
 ```
 
