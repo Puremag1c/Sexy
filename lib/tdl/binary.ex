@@ -42,7 +42,7 @@ defmodule Sexy.TDL.Binary do
     end
   end
 
-  @doc "Release target for this machine, e.g. \"linux-x64\" or \"macos-arm64\"."
+  @doc ~S(Release target for this machine, e.g. "linux-x64" or "macos-arm64".)
   @spec target() :: String.t()
   def target do
     arch_parts =
@@ -83,7 +83,7 @@ defmodule Sexy.TDL.Binary do
   end
 
   defp cache_path(manifest, target) do
-    cache_dir = :filename.basedir(:user_cache, "sexy") |> List.to_string()
+    cache_dir = :filename.basedir(:user_cache, "sexy") |> to_string()
     Path.join(cache_dir, "tdlib_json_cli-#{manifest["tdlib_version"]}-#{target}")
   end
 
