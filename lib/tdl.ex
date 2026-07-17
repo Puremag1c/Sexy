@@ -4,17 +4,20 @@ defmodule Sexy.TDL do
 
   ## Setup
 
-  1. Install `tdlib_json_cli` (or build from source)
-  2. Configure the binary path:
+  1. Configure the session data directory:
 
          # config/config.exs
          config :sexy,
-           tdlib_binary: "/usr/local/bin/tdlib_json_cli",
            tdlib_data_root: "/tmp/tdlib_data"
 
+     The `tdlib_json_cli` binary is downloaded automatically for your platform
+     on first start (pinned + checksum-verified via `priv/tdlib/manifest.json`;
+     see `Sexy.TDL.Binary`). To use your own build instead, set
+     `tdlib_binary: "/path/to/tdlib_json_cli"` — that path is then used as-is.
+     Prefetch in CI/Dockerfile with `mix sexy.tdl.install`.
      Or run the interactive wizard: `mix sexy.tdl.setup`
 
-  3. Add to your supervision tree:
+  2. Add to your supervision tree:
 
          children = [Sexy.TDL]
 
@@ -237,6 +240,14 @@ defmodule Sexy.TDL do
 
   @impl true
   def init(_opts) do
+    # Fail at application start, not at the first open() hours later: a
+    # missing binary must surface at deploy time. No-op (and offline) when
+    # the binary is configured or already cached.
+    case Sexy.TDL.Binary.ensure_installed() do
+      :ok -> :ok
+      {:error, message} -> raise "Sexy.TDL: #{message}"
+    end
+
     children = [
       Registry,
       {Elixir.Registry, keys: :unique, name: Sexy.TDL.Workers},

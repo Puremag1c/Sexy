@@ -114,12 +114,10 @@ defmodule Sexy.TDL.Backend do
   # Private
 
   defp open_port(name, enable_proxy) do
-    binary = Application.get_env(:sexy, :tdlib_binary)
+    # Pure lookup (config → env → cache) — this runs on every Riser restart,
+    # so it must never touch the network; download happens at Sexy.TDL start.
+    binary = Sexy.TDL.Binary.resolve!()
     data_root = Application.get_env(:sexy, :tdlib_data_root)
-
-    unless binary do
-      raise "Missing :sexy, :tdlib_binary config"
-    end
 
     try do
       port =
@@ -130,7 +128,8 @@ defmodule Sexy.TDL.Backend do
             forward_system_event(name, :proxy_conf_missing, proxy_conf)
           end
 
-          cmd = "proxychains4 -f #{proxy_conf} #{binary}"
+          # quoted: the auto-resolved cache path may contain spaces
+          cmd = "proxychains4 -f '#{proxy_conf}' '#{binary}'"
           Port.open({:spawn_executable, "/bin/sh"}, @port_opts_proxy ++ [args: ["-c", cmd]])
         else
           Port.open({:spawn_executable, binary}, @port_opts)

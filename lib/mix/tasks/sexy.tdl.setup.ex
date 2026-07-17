@@ -3,7 +3,8 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
   Interactive setup for Sexy.TDL (TDLib integration).
 
   Guides through configuration:
-  1. Path to tdlib_json_cli binary
+  1. Path to tdlib_json_cli binary (optional — by default Sexy downloads a
+     prebuilt binary for your platform at startup, see `Sexy.TDL.Binary`)
   2. Data root directory for session storage
 
   `Sexy.TDL.Object`/`Sexy.TDL.Method` types are bundled with the library —
@@ -55,15 +56,17 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
   end
 
   defp prompt_binary do
-    default = "/usr/local/bin/tdlib_json_cli"
-    input = prompt("Path to tdlib_json_cli binary [#{default}]:")
-    path = if input == "", do: default, else: input
+    input = prompt("Path to tdlib_json_cli binary [auto — download prebuilt]:")
 
-    unless File.exists?(path) do
-      Mix.shell().info("Warning: #{path} not found. Make sure it exists at runtime.")
+    if input == "" do
+      nil
+    else
+      unless File.exists?(input) do
+        Mix.shell().info("Warning: #{input} not found. Make sure it exists at runtime.")
+      end
+
+      input
     end
-
-    path
   end
 
   defp prompt_data_root do
@@ -75,19 +78,20 @@ defmodule Mix.Tasks.Sexy.Tdl.Setup do
   defp write_config(binary, data_root) do
     config_path = "config/config.exs"
 
+    binary_line = if binary, do: "\n  tdlib_binary: #{inspect(binary)},", else: ""
+
     snippet = """
 
-    # Sexy.TDL configuration
-    config :sexy,
-      tdlib_binary: #{inspect(binary)},
+    # Sexy.TDL configuration (no :tdlib_binary = prebuilt binary auto-download)
+    config :sexy,#{binary_line}
       tdlib_data_root: #{inspect(data_root)}
     """
 
     if File.exists?(config_path) do
       content = File.read!(config_path)
 
-      if String.contains?(content, ":tdlib_binary") do
-        Mix.shell().info("\nConfig already contains :tdlib_binary. Skipping config write.")
+      if String.contains?(content, ":tdlib_data_root") do
+        Mix.shell().info("\nConfig already contains :tdlib_data_root. Skipping config write.")
         Mix.shell().info("Verify your config/config.exs has:")
         Mix.shell().info(snippet)
       else
