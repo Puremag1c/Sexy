@@ -1,3 +1,47 @@
+# Upgrading to 0.11.0
+
+0.11.0 ships prebuilt `tdlib_json_cli` binaries with platform auto-detection
+and regenerates the TDLib types for **TDLib 1.8.66**. No Bot API changes.
+
+## Binary resolution
+
+* **Before:** `config :sexy, :tdlib_binary` was required; you built
+  `tdlib_json_cli` yourself.
+* **Now:** optional. Without it, `Sexy.TDL` downloads the prebuilt binary for
+  your platform (`linux-x64`, `linux-arm64`, `macos-arm64`) at startup into
+  the user cache (`~/.cache/sexy` on Linux, `~/Library/Caches/sexy` on
+  macOS), verifying its sha256 against `priv/tdlib/manifest.json`. A
+  configured path stays authoritative — it is used as-is and never falls
+  back to auto-download.
+* **Do (recommended):** delete `:tdlib_binary` from config, keep
+  `:tdlib_data_root`. First start needs outbound HTTPS to github.com;
+  prefetch with `mix sexy.tdl.install` where that's a problem.
+  `SEXY_TDLIB_PATH` overrides without a config change.
+* **Do (own build):** keep `:tdlib_binary` pointing at your binary — but
+  rebuild it from TDLib 1.8.66 (see below).
+
+## TDLib 1.8.66 types
+
+* Object/Method structs jump from TDLib ~1.8.0-era to 1.8.66: 2370 objects +
+  1010 methods (was 1772 + 786). Telegram renamed/removed some types in
+  between — code matching on structs that no longer exist breaks; run your
+  suite after upgrading.
+* The shipped binary and the structs are generated from the **same TDLib
+  commit**. An old self-built binary speaks the old schema and will produce
+  events the new structs don't model — upgrade the binary together with the
+  library (simplest: drop `:tdlib_binary` and let it auto-download).
+* Freeze/ban detection (non-JSON `ACCOUNT_FROZEN`/`FROZEN_METHOD_INVALID`
+  error forwarding) is unchanged and verified against 1.8.66's log format.
+  Still, canary one session before rolling a fleet.
+
+## Proxy mode
+
+proxychains keeps working: prebuilt linux binaries link libc dynamically
+(`LD_PRELOAD` requires that), with OpenSSL/zlib/libstdc++ static. The
+proxychains command now quotes the binary and `proxy.conf` paths.
+
+---
+
 # Upgrading to 0.10.0
 
 0.10.0 is a reliability release: 37 audited defects fixed across the Bot core,

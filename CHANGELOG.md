@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.11.0
+
+TDLib delivery pipeline: prebuilt binaries + platform auto-detection.
+`:tdlib_binary` config is now optional — see [UPGRADING.md](UPGRADING.md).
+
+### Added
+
+- Prebuilt `tdlib_json_cli` binaries (`linux-x64`, `linux-arm64`, `macos-arm64`) built by CI from a pinned TDLib commit and published as [GitHub releases of the wrapper fork](https://github.com/Puremag1c/tdlib-json-cli/releases); `priv/tdlib/manifest.json` (shipped in the hex package) pins the TDLib version, commit, and per-target sha256.
+- `Sexy.TDL.Binary` — binary resolution with platform auto-detection: `config :sexy, :tdlib_binary` → `SEXY_TDLIB_PATH` env → per-user cache with checksum-verified auto-download. The download happens once at `Sexy.TDL` startup, so a missing binary fails at deploy time, not at the first `open/3`; port restarts never touch the network.
+- `mix sexy.tdl.install` — prefetch the binary (CI, Docker, air-gapped prep).
+- `mix sexy.tdl.generate_types` accepts `td_api.tl` directly (the schema file from the TDLib source tree — no TDLib build, doxygen, or scraper needed). Parse anomalies raise instead of silently dropping types. The legacy `types.json` input still works.
+
+### Changed
+
+- TDLib types regenerated for **TDLib 1.8.66** (`tdlib/td@d8d46df`): 2370 `Sexy.TDL.Object.*` + 1010 `Sexy.TDL.Method.*` structs (was 1772 + 786). The prebuilt binary and the generated modules come from the same TDLib commit — no schema skew.
+- `mix sexy.tdl.setup`: the binary path prompt is optional (default `[auto]` uses the prebuilt binary; the wizard then only writes `:tdlib_data_root`).
+- Proxy mode: the binary and `proxy.conf` paths are shell-quoted in the proxychains command (auto-resolved cache paths may contain spaces). Prebuilt linux binaries link libc **dynamically** precisely so proxychains (`LD_PRELOAD`) keeps intercepting; OpenSSL/zlib/libstdc++ are linked statically.
+
+### Fixed
+
+- `mix credo --strict` failed on master since 0.10.3 (`handle_line/2` over the complexity limit) — mechanical extraction of `internal_noise?/2`, behavior unchanged (locked by the backend tests).
+
 ## 0.10.3
 
 ### Fixed
