@@ -344,12 +344,13 @@ Open a session with `Sexy.TDL.open/3`, close with `Sexy.TDL.close/1`. Each sessi
 
 ### Auto-generated types
 
-Sexy ships 2558 structs generated from TDLib API documentation:
+Sexy targets **TDLib 1.8.66** ([tdlib/td@d8d46df](https://github.com/tdlib/td/commit/d8d46dfab55f40e2fcf30fc5cc7cd5950abe99e2)) and ships 3380 structs generated from its schema:
 
-- `Sexy.TDL.Method.*` — 786 API methods (GetMe, SendMessage, etc.)
-- `Sexy.TDL.Object.*` — 1772 response types (UpdateNewMessage, User, Chat, etc.)
+- `Sexy.TDL.Method.*` — 1010 API methods (GetMe, SendMessage, etc.)
+- `Sexy.TDL.Object.*` — 2370 response types (UpdateNewMessage, User, Chat, etc.)
 
-Regenerate from a different TDLib version: `mix sexy.tdl.generate_types /path/to/types.json`
+The pinned version, TDLib commit, and binary checksums live in `priv/tdlib/manifest.json`.
+Regenerate for a different TDLib version: `mix sexy.tdl.generate_types /path/to/td_api.tl`
 (run inside the sexy repository or a fork — in a consumer project the generated
 modules would duplicate the ones compiled in the dependency; see UPGRADING.md).
 
@@ -420,8 +421,8 @@ Sexy.TDL.Backend            Port to tdlib_json_cli binary
 Sexy.TDL.Handler            JSON deserialization + event routing
 Sexy.TDL.Registry           ETS session storage
 Sexy.TDL.Riser              Per-account supervisor
-Sexy.TDL.Object             1772 auto-generated TDLib object structs
-Sexy.TDL.Method             786 auto-generated TDLib method structs
+Sexy.TDL.Object             2370 auto-generated TDLib object structs
+Sexy.TDL.Method             1010 auto-generated TDLib method structs
 Sexy.Utils                  Query parsing, formatting, type conversion
 Sexy.Utils.Bot              Command parsing, pagination
 Sexy.Utils.Object           Message struct + type detection
@@ -434,7 +435,7 @@ Sexy.Utils.Object           Message struct + type detection
 | Task | Description |
 |------|-------------|
 | `mix sexy.tdl.setup` | Interactive TDLib configuration wizard |
-| `mix sexy.tdl.generate_types [path]` | Regenerate Method/Object structs from types.json |
+| `mix sexy.tdl.generate_types [path]` | Regenerate Method/Object structs from td_api.tl (or legacy types.json) |
 
 ---
 

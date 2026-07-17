@@ -86,14 +86,15 @@ defmodule Sexy.TDL do
 
   ## Auto-generated types
 
-  Sexy ships **2558 structs** generated from TDLib API documentation:
+  Sexy targets **TDLib 1.8.66** and ships **3380 structs** generated from its
+  schema (`priv/tdlib/manifest.json` pins the exact version and commit):
 
-    * `Sexy.TDL.Method.*` — 786 API methods
-    * `Sexy.TDL.Object.*` — 1772 response/event types
+    * `Sexy.TDL.Method.*` — 1010 API methods
+    * `Sexy.TDL.Object.*` — 2370 response/event types
 
   Regenerate for a different TDLib version:
 
-      mix sexy.tdl.generate_types /path/to/types.json
+      mix sexy.tdl.generate_types /path/to/td_api.tl
   """
 
   use Supervisor

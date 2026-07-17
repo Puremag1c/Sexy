@@ -161,11 +161,12 @@ as `{:proxy_event, "error: ..."}`.
 ## Type generation
 
 `Sexy` ships structs for every TDLib method and object — no generation step is
-needed in your app. To regenerate from a newer `types.json`, run **inside the
+needed in your app. To regenerate from a newer TDLib (its `td_api.tl` schema,
+found at `td/generate/scheme/td_api.tl` in the TDLib tree), run **inside the
 sexy repository (or a fork)**:
 
 ```bash
-mix sexy.tdl.generate_types /path/to/types.json   # writes lib/tdl/{object,method}.ex
+mix sexy.tdl.generate_types /path/to/td_api.tl   # writes lib/tdl/{object,method}.ex
 ```
 
 The task refuses to run in a consumer project: the generated modules would

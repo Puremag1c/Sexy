@@ -127,10 +127,10 @@ Sexy.TDL.close("my_account")
 
 ## Auto-generated types
 
-Sexy ships 2558 structs matching the TDLib API:
+Sexy targets TDLib 1.8.66 and ships 3380 structs matching its API:
 
-- `Sexy.TDL.Method.*` — 786 methods (GetMe, SendMessage, GetChat, ...)
-- `Sexy.TDL.Object.*` — 1772 types (UpdateNewMessage, User, Chat, Message, ...)
+- `Sexy.TDL.Method.*` — 1010 methods (GetMe, SendMessage, GetChat, ...)
+- `Sexy.TDL.Object.*` — 2370 types (UpdateNewMessage, User, Chat, Message, ...)
 
 Each struct has `@moduledoc` with field descriptions and a link to the official
 Telegram documentation.
@@ -139,7 +139,7 @@ To regenerate from a newer TDLib version (inside the sexy repository or a fork �
 not in your app, where the modules would duplicate the dependency's):
 
 ```bash
-mix sexy.tdl.generate_types /path/to/types.json
+mix sexy.tdl.generate_types /path/to/td_api.tl
 ```
 
 ## Proxy support
