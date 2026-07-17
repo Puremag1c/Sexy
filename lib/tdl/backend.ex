@@ -154,13 +154,7 @@ defmodule Sexy.TDL.Backend do
       json_line?(text) ->
         Logger.warning("#{name}: incoming message but no handler registered")
 
-      (match?(%{code: 0}, error) or connection_noise?(text)) and not critical_error?(text) ->
-        # tdlib retries these itself (ping timeout code 0, FLOOD_WAIT on
-        # Connect::TCP → DcId) — the app can't act on them, so never forward or
-        # warn. Surfacing them as errors floods the log and the pipeline when
-        # the direct-connection IP is throttled by Telegram. critical_error?
-        # is the escape hatch: a freeze/ban is delivered even if it somehow
-        # rides a line with transport framing.
+      internal_noise?(text, error) ->
         Logger.debug("#{name}: TDLib internal: #{text}")
 
       error != :no_error and handler_pid ->
@@ -189,6 +183,15 @@ defmodule Sexy.TDL.Backend do
   defp strip_ansi(text), do: Regex.replace(~r/\e\[[0-9;]*m/, text, "")
 
   defp json_line?(text), do: text |> String.trim_leading() |> String.starts_with?("{")
+
+  # tdlib retries these itself (ping timeout code 0, FLOOD_WAIT on
+  # Connect::TCP → DcId) — the app can't act on them, so never forward or
+  # warn. Surfacing them as errors floods the log and the pipeline when
+  # the direct-connection IP is throttled by Telegram. critical_error?
+  # is the escape hatch: a freeze/ban is delivered even if it somehow
+  # rides a line with transport framing.
+  defp internal_noise?(text, error),
+    do: (match?(%{code: 0}, error) or connection_noise?(text)) and not critical_error?(text)
 
   # tdlib's connection/transport layer logs its own retries as "errors" (e.g.
   # FLOOD_WAIT on Connect::TCP → DcId). They carry transport framing that real
