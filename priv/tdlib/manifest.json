@@ -6,6 +6,14 @@
     "linux-x64": {
       "asset": "tdlib_json_cli-1.8.66-linux-x64",
       "sha256": "c6beb8284775cf2200823d29cdaea85ab429f4c63182d57269e6b2445a5d7797"
+    },
+    "linux-arm64": {
+      "asset": "tdlib_json_cli-1.8.66-linux-arm64",
+      "sha256": "58a4bc707f8ea4d3502f2572dc80d11bac974df641366890e8c465a15014715f"
+    },
+    "macos-arm64": {
+      "asset": "tdlib_json_cli-1.8.66-macos-arm64",
+      "sha256": "ed295340ab830a864cad045507174f30acc3aea18537af95178c81febb32c59f"
     }
   }
 }
