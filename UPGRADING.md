@@ -1,3 +1,24 @@
+# Upgrading to 0.11.1
+
+0.11.1 changes how proxy mode is selected. No Bot API changes.
+
+## Proxy mode: pass the config path
+
+* **Before:** `Sexy.TDL.open/3` with `proxy: true` expected a `proxy.conf`
+  at `<tdlib_data_root>/<session>/proxy.conf`; a missing file was reported
+  as a `{:system_event, :proxy_conf_missing, path}` message and the port
+  still tried to launch.
+* **Now:** pass the path itself — `proxy: "/etc/proxychains/my-account.conf"`
+  (`proxy: false`, the default, means no proxy). A missing file fails
+  `open/3` synchronously with the standard port error
+  (`{:port_failed, :proxy_conf_missing}` inside the usual supervisor
+  wrapper) — the same shape as any other port failure, no special casing.
+* **Do:** replace `proxy: true` with your config path; drop the per-session
+  `proxy.conf` convention if you had one. Sessions started without a proxy
+  are unaffected.
+
+---
+
 # Upgrading to 0.11.0
 
 0.11.0 ships prebuilt `tdlib_json_cli` binaries with platform auto-detection

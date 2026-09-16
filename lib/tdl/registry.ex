@@ -17,6 +17,8 @@ defmodule Sexy.TDL.Registry do
     * `:handler_pid` — Handler GenServer pid
     * `:app_pid` — target process for events
     * `:encryption_key` — database encryption key
+    * `:shell_pid` — port's OS pid (the spawned shell / wrapped process)
+    * `:tdlib_pid` — OS pid of the tdlib process itself
 
   ## Worker discovery
 
@@ -33,7 +35,9 @@ defmodule Sexy.TDL.Registry do
     :backend_pid,
     :handler_pid,
     :app_pid,
-    :encryption_key
+    :encryption_key,
+    :shell_pid,
+    :tdlib_pid
   ]
 
   @type t :: %__MODULE__{}

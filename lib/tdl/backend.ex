@@ -10,8 +10,9 @@ defmodule Sexy.TDL.Backend do
 
   ## Proxy support
 
-  When opened with `proxy: true`, the binary is wrapped in `proxychains4`.
-  Requires a `proxy.conf` file at `<tdlib_data_root>/<session>/proxy.conf`.
+  When opened with `proxy: "<path>"`, the binary is wrapped in
+  `proxychains4 -f <path>`. The path must exist — a missing file fails the
+  session synchronously with `{:port_failed, :proxy_conf_missing}`.
   """
   use GenServer
 
@@ -37,6 +38,8 @@ defmodule Sexy.TDL.Backend do
       true ->
         case open_port(name, proxy) do
           {:ok, port} ->
+            {:os_pid, shell_pid} = Port.info(port, :os_pid)
+            Registry.update(name, shell_pid: shell_pid, tdlib_pid: tdlib_pid(shell_pid))
             {:ok, %__MODULE__{name: name, buffer: "", port: port}}
 
           {:error, reason} ->
@@ -113,33 +116,46 @@ defmodule Sexy.TDL.Backend do
 
   # Private
 
-  defp open_port(name, enable_proxy) do
+  defp open_port(name, proxy) do
     # Pure lookup (config → env → cache) — this runs on every Riser restart,
     # so it must never touch the network; download happens at Sexy.TDL start.
     binary = Sexy.TDL.Binary.resolve!()
-    data_root = Application.get_env(:sexy, :tdlib_data_root)
 
     try do
-      port =
-        if enable_proxy do
-          proxy_conf = Path.join([data_root, name, "proxy.conf"])
+      cond do
+        proxy == false ->
+          {:ok, Port.open({:spawn_executable, binary}, @port_opts)}
 
-          unless File.exists?(proxy_conf) do
-            forward_system_event(name, :proxy_conf_missing, proxy_conf)
-          end
-
+        is_binary(proxy) and File.exists?(proxy) ->
+          # exec: the shell replaces itself with proxychains4, so the port's
+          # os_pid is the real process (no orphaned shell left on teardown).
           # quoted: the auto-resolved cache path may contain spaces
-          cmd = "proxychains4 -f '#{proxy_conf}' '#{binary}'"
-          Port.open({:spawn_executable, "/bin/sh"}, @port_opts_proxy ++ [args: ["-c", cmd]])
-        else
-          Port.open({:spawn_executable, binary}, @port_opts)
-        end
+          cmd = "exec proxychains4 -f '#{proxy}' '#{binary}'"
 
-      {:ok, port}
+          {:ok,
+           Port.open({:spawn_executable, "/bin/sh"}, @port_opts_proxy ++ [args: ["-c", cmd]])}
+
+        is_binary(proxy) ->
+          Logger.error("#{name}: proxy.conf not found: #{proxy}")
+          {:error, :proxy_conf_missing}
+
+        true ->
+          {:error, {:bad_proxy_option, proxy}}
+      end
     rescue
       e ->
         Logger.error("#{name}: unable to start port: #{inspect(e)}")
         {:error, e}
+    end
+  end
+
+  # With exec in the command both pids coincide; without a proxy the port
+  # spawns the binary directly — also coincides. pgrep stays for the case
+  # exec is ever dropped: the shell's child would then be the tdlib process.
+  defp tdlib_pid(shell_pid) do
+    case System.cmd("pgrep", ["-P", Integer.to_string(shell_pid)], stderr_to_stdout: true) do
+      {out, 0} -> out |> String.split() |> List.first() |> String.to_integer()
+      _ -> shell_pid
     end
   end
 

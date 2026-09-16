@@ -131,7 +131,8 @@ defmodule Sexy.TDL do
 
   Options:
     - `:app_pid` — process receiving events (required)
-    - `:proxy` — enable proxychains (default: false)
+    - `:proxy` — path to a proxychains4 config file; the binary is then
+      wrapped in `proxychains4 -f <path>` (default: `false` — no proxy)
     - `:encryption_key` — database encryption key (default: "")
     - `:children` — extra child specs for the Riser supervisor
 

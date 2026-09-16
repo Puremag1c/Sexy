@@ -7,12 +7,10 @@ defmodule Sexy.TDLTest do
 
   setup do
     Application.put_env(:sexy, :tdlib_binary, "/bin/cat")
-    Application.put_env(:sexy, :tdlib_data_root, System.tmp_dir!())
     start_supervised!(Sexy.TDL)
 
     on_exit(fn ->
       Application.delete_env(:sexy, :tdlib_binary)
-      Application.delete_env(:sexy, :tdlib_data_root)
     end)
 
     :ok
@@ -55,6 +53,37 @@ defmodule Sexy.TDLTest do
     Application.put_env(:sexy, :tdlib_binary, "/nonexistent/tdlib_json_cli")
     assert {:error, _reason} = TDL.open("t3", %{}, app_pid: self())
     assert Registry.get("t3") == nil
+  end
+
+  # Same wrapper shape as every other port failure (e.g. the broken binary
+  # above): the caller must not need a special case for a missing proxy.conf.
+  test "open with a missing proxy.conf fails synchronously like any other port error" do
+    assert {:error,
+            {:shutdown,
+             {:failed_to_start_child, Sexy.TDL.Backend, {:port_failed, :proxy_conf_missing}}}} =
+             TDL.open("t7", %{}, app_pid: self(), proxy: "/nonexistent/proxy.conf")
+
+    assert Registry.get("t7") == nil
+  end
+
+  test "open with proxy: true is rejected — the option is a path now" do
+    assert {:error,
+            {:shutdown,
+             {:failed_to_start_child, Sexy.TDL.Backend, {:port_failed, {:bad_proxy_option, true}}}}} =
+             TDL.open("t8", %{}, app_pid: self(), proxy: true)
+
+    assert Registry.get("t8") == nil
+  end
+
+  test "registry holds the live os pids of the spawned process" do
+    assert {:ok, _pid} = TDL.open("t9", %{}, app_pid: self())
+    wait_until(fn -> is_integer(Registry.get("t9", :tdlib_pid)) end)
+
+    %{shell_pid: shell_pid, tdlib_pid: tdlib_pid} = Registry.get("t9")
+    assert is_integer(shell_pid)
+    assert {_out, 0} = System.cmd("ps", ["-p", Integer.to_string(tdlib_pid), "-o", "pid="])
+
+    assert :ok = TDL.close("t9")
   end
 
   test "transmit to a stale/dead backend pid returns {:error, :no_backend}" do

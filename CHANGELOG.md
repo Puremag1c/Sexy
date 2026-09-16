@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.11.1
+
+Proxy config comes from the caller; the session registry carries the real OS pids.
+
+### Changed
+
+- `Sexy.TDL.open/3` `:proxy` is now `false | String.t()`: pass the **path to a proxychains4 config** instead of `proxy: true`. The `<tdlib_data_root>/<session>/proxy.conf` auto-lookup is gone (`:tdlib_data_root` stays — it still drives the setup wizard and the session data directory). A missing config file fails `open/3` synchronously with the standard port error — `{:error, {:shutdown, {:failed_to_start_child, Sexy.TDL.Backend, {:port_failed, :proxy_conf_missing}}}}`, the same wrapper shape as any other port failure, so callers need no special case. The ad-hoc `{:system_event, :proxy_conf_missing, path}` message is removed (it had no consumers). `proxy: true` now fails with `{:port_failed, {:bad_proxy_option, true}}`.
+- The proxychains launch uses `exec proxychains4 -f <conf> <binary>`, so the port's `os_pid` **is** the wrapped process — no orphaned shell left behind when the session stops.
+
+### Added
+
+- `Sexy.TDL.Registry` entries now carry `:shell_pid` (the port's OS pid) and `:tdlib_pid` (the tdlib process OS pid). They are equal today with the `exec` launch; a `pgrep -P` fallback covers a hypothetical shell-wrapped child. Lets tooling inspect or signal the exact OS process from outside BEAM.
+
 ## 0.11.0
 
 TDLib delivery pipeline: prebuilt binaries + platform auto-detection.
