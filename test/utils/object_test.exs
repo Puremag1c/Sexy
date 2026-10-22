@@ -17,6 +17,7 @@ defmodule Sexy.Utils.ObjectTest do
       assert obj.file == nil
       assert obj.filename == nil
       assert obj.upload_type == nil
+      assert obj.params == %{}
     end
   end
 
@@ -39,6 +40,18 @@ defmodule Sexy.Utils.ObjectTest do
 
     test "empty list returns empty list" do
       assert Object.build([]) == []
+    end
+
+    # 0.12.0: unknown keys used to be dropped silently by struct/2
+    test "unknown key raises instead of being dropped" do
+      assert_raise KeyError, fn ->
+        Object.build(%{chat_id: 1, link_preview_options: %{is_disabled: true}})
+      end
+    end
+
+    test "params is accepted" do
+      assert %Object{params: %{protect_content: true}} =
+               Object.build(%{chat_id: 1, params: %{protect_content: true}})
     end
   end
 

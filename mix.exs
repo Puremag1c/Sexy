@@ -1,7 +1,7 @@
 defmodule Sexy.MixProject do
   use Mix.Project
 
-  @version "0.11.1"
+  @version "0.12.0"
   @source_url "https://github.com/Puremag1c/Sexy"
 
   def project do
@@ -13,8 +13,7 @@ defmodule Sexy.MixProject do
       deps: deps(),
       dialyzer: [
         plt_add_apps: [:mix, :ex_unit, :inets],
-        plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
-        ignore_warnings: ".dialyzer_ignore.exs"
+        plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
       ],
       name: "Sexy",
       description: description(),

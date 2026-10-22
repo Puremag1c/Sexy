@@ -126,7 +126,8 @@ defmodule Sexy.Bot do
   Convert a map (or list of maps) into `Sexy.Utils.Object` struct(s).
 
   Accepts any map with Object fields: `:chat_id`, `:text`, `:media`, `:kb`,
-  `:entity`, `:update_data`, `:file`, `:filename`, `:upload_type`.
+  `:entity`, `:update_data`, `:file`, `:filename`, `:upload_type`, `:params`.
+  Raises `KeyError` on any other key.
 
   ## Example
 
@@ -194,7 +195,7 @@ defmodule Sexy.Bot do
   defdelegate send_photo(body), to: Sexy.Bot.Api
 
   @doc """
-  Upload a photo as multipart. `file` is a binary or path; `kb` is a JSON-encoded reply markup.
+  Upload a photo as multipart. `file` is the content (binary) or `{:path, path}`; `kb` is a JSON-encoded reply markup.
   """
   defdelegate send_photo(chat_id, file, filename, text, kb), to: Sexy.Bot.Api
 
@@ -202,7 +203,7 @@ defmodule Sexy.Bot do
   defdelegate send_video(body), to: Sexy.Bot.Api
 
   @doc """
-  Upload a video as multipart. `file` is a binary or path; `kb` is a JSON-encoded reply markup.
+  Upload a video as multipart. `file` is the content (binary) or `{:path, path}`; `kb` is a JSON-encoded reply markup.
   """
   defdelegate send_video(chat_id, file, filename, text, kb), to: Sexy.Bot.Api
 
@@ -210,7 +211,7 @@ defmodule Sexy.Bot do
   defdelegate send_animation(body), to: Sexy.Bot.Api
 
   @doc """
-  Upload an animation as multipart. `file` is a binary or path; `kb` is a JSON-encoded reply markup.
+  Upload an animation as multipart. `file` is the content (binary) or `{:path, path}`; `kb` is a JSON-encoded reply markup.
   """
   defdelegate send_animation(chat_id, file, filename, text, kb), to: Sexy.Bot.Api
 
@@ -223,7 +224,7 @@ defmodule Sexy.Bot do
   ## Parameters
 
     * `chat_id` — Telegram chat id
-    * `file` — binary file content
+    * `file` — file content (binary) or `{:path, path}`
     * `name` — filename shown to the user
     * `text` — caption (HTML)
     * `kb` — JSON-encoded reply markup

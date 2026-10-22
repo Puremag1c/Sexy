@@ -22,10 +22,14 @@ defmodule Sexy.TDL.Backend do
 
   defstruct [:name, :port, :buffer]
 
-  @port_opts_proxy [:binary, :line, :exit_status, :use_stdio, :stderr_to_stdout, :hide]
+  # {:line, 512}, not bare :line: bare :line works at runtime (same 512-byte
+  # chunks) but is outside OTP's open_port spec, so dialyzer concluded
+  # Port.open/2 never succeeds and flagged the whole {:ok, port} branch as dead.
+  # Longer lines arrive as :noeol chunks and are reassembled in handle_info/2.
+  @port_opts_proxy [:binary, {:line, 512}, :exit_status, :use_stdio, :stderr_to_stdout, :hide]
   # :exit_status is essential: without it the death of the external binary is
   # completely invisible and the session silently zombies.
-  @port_opts [:binary, :line, :exit_status, :stderr_to_stdout]
+  @port_opts [:binary, {:line, 512}, :exit_status, :stderr_to_stdout]
 
   def start_link({name, proxy}) do
     GenServer.start_link(__MODULE__, {name, proxy}, [])

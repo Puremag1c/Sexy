@@ -1,3 +1,52 @@
+# Upgrading to 0.12.0
+
+0.12.0 makes `Sexy.Bot.build/1` strict and adds `params` for extra Bot API
+parameters. No TDL changes.
+
+## Unknown Object keys raise
+
+* **Before:** `Sexy.Bot.build/1` (and `Sexy.Bot.notify/3`) silently dropped
+  keys that aren't Object fields — `%{chat_id: 1, text: "hi", silent: true}`
+  sent a message with no trace of `silent`.
+* **Now:** such a key raises `KeyError`.
+* **Do:** run your test suite; for every `KeyError`, either fix the typo or
+  move the key into `params` if it is a Bot API parameter
+  (`%{..., params: %{disable_notification: true}}`). Keys only used by your
+  app belong in `update_data`.
+
+## Extra Bot API parameters: `params`
+
+* **Now:** `params: %{...}` is merged into the `send*` request for every
+  content type, multipart uploads included:
+  `params: %{link_preview_options: %{is_disabled: true}}`. Text and
+  file_id sends without `params` carry the same parameters as before;
+  uploads change only as described below.
+* Parameters Sexy sets itself (`chat_id`, `text`/`caption`,
+  `entities`/`caption_entities`, `parse_mode`, `reply_markup`, the media
+  field) can't be overridden through `params` — use the Object fields; a
+  clash raises `ArgumentError`.
+
+## Uploading from disk: `{:path, path}`
+
+* **Before:** docs said `file:` accepts "content or path", but a path string
+  was sent as the file's **content** — Telegram received a file containing
+  the path text.
+* **Now:** `file:` is content (binary); pass `file: {:path, path}` to upload
+  a file from disk. A missing or unreadable file returns `%{"ok" => false, ...}` (logged)
+  before any request is sent. Same for `Sexy.Bot.send_photo/5` & co.
+* **Do:** replace `file: "/some/path"` with `file: {:path, "/some/path"}`
+  (or `File.read!/1` it yourself).
+
+## Upload captions with entities
+
+* **Before:** uploads ignored `entity` and always used `parse_mode: "HTML"`.
+* **Now:** uploads send `caption_entities`, and `parse_mode` follows the same
+  rule as other sends (HTML only when `entity` is empty). If you relied on
+  HTML markup in an upload caption **while** also passing `entity`, drop one
+  of them.
+
+---
+
 # Upgrading to 0.11.1
 
 0.11.1 changes how proxy mode is selected. No Bot API changes.

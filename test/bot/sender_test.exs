@@ -106,7 +106,7 @@ defmodule Sexy.Bot.SenderTest do
         chat_id: 123,
         text: "doc caption",
         media: "file",
-        file: tmp,
+        file: {:path, tmp},
         filename: "report.pdf"
       }
 
@@ -143,7 +143,7 @@ defmodule Sexy.Bot.SenderTest do
         chat_id: 123,
         text: "photo caption",
         upload_type: :photo,
-        file: tmp,
+        file: {:path, tmp},
         filename: "pic.jpg"
       }
 
@@ -180,7 +180,7 @@ defmodule Sexy.Bot.SenderTest do
         chat_id: 123,
         text: "video caption",
         upload_type: :video,
-        file: tmp,
+        file: {:path, tmp},
         filename: "clip.mp4"
       }
 
@@ -217,7 +217,7 @@ defmodule Sexy.Bot.SenderTest do
         chat_id: 123,
         text: "anim caption",
         upload_type: :animation,
-        file: tmp,
+        file: {:path, tmp},
         filename: "wave.gif"
       }
 
@@ -254,12 +254,167 @@ defmodule Sexy.Bot.SenderTest do
         chat_id: 123,
         text: "doc caption",
         upload_type: :document,
-        file: tmp,
+        file: {:path, tmp},
         filename: "report.pdf"
       }
 
       result = Sender.deliver(object)
       assert result["ok"] == true
+    end
+  end
+
+  # ── params passthrough ──────────────────────────────────────
+
+  describe "deliver/2 params" do
+    defp capture_body(bypass, path) do
+      test_pid = self()
+
+      Bypass.expect_once(bypass, "POST", path, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test_pid, {:body, body})
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, ok_response(500))
+      end)
+    end
+
+    test "sendMessage carries params, nil values are omitted", %{bypass: bypass} do
+      capture_body(bypass, "/sendMessage")
+
+      %Object{
+        chat_id: 123,
+        text: "https://example.com",
+        params: %{:link_preview_options => %{is_disabled: true}, "protect_content" => nil}
+      }
+      |> Sender.deliver(update_mid: false)
+
+      assert_received {:body, body}
+      decoded = Jason.decode!(body)
+      assert decoded["link_preview_options"] == %{"is_disabled" => true}
+      refute Map.has_key?(decoded, "protect_content")
+      assert decoded["text"] == "https://example.com"
+    end
+
+    test "without params the body has only Sexy's keys", %{bypass: bypass} do
+      capture_body(bypass, "/sendMessage")
+
+      Sender.deliver(%Object{chat_id: 123, text: "hi"}, update_mid: false)
+
+      assert_received {:body, body}
+
+      assert body |> Jason.decode!() |> Map.keys() |> Enum.sort() ==
+               ~w(chat_id entities parse_mode reply_markup text)
+    end
+
+    test "photo by file_id carries params", %{bypass: bypass} do
+      capture_body(bypass, "/sendPhoto")
+
+      %Object{chat_id: 123, media: "AgACPhotoId", params: %{has_spoiler: true}}
+      |> Sender.deliver(update_mid: false)
+
+      assert_received {:body, body}
+      assert %{"photo" => "AgACPhotoId", "has_spoiler" => true} = Jason.decode!(body)
+    end
+
+    test "multipart upload carries params and entities", %{bypass: bypass} do
+      capture_body(bypass, "/sendPhoto")
+
+      %Object{
+        chat_id: 123,
+        text: "bold",
+        entity: [%{type: "bold", offset: 0, length: 4}],
+        upload_type: :photo,
+        file: "fake-jpeg",
+        filename: "p.jpg",
+        params: %{has_spoiler: true, show_caption_above_media: false}
+      }
+      |> Sender.deliver(update_mid: false)
+
+      assert_received {:body, body}
+      assert form_field(body, "has_spoiler") == "true"
+      assert form_field(body, "show_caption_above_media") == "false"
+      assert form_field(body, "chat_id") == "123"
+
+      assert Jason.decode!(form_field(body, "caption_entities")) == [
+               %{"type" => "bold", "offset" => 0, "length" => 4}
+             ]
+
+      # entities given → no HTML parse mode (was hardcoded "HTML" before 0.12.0)
+      assert form_field(body, "parse_mode") == ""
+      assert body =~ "name=photo; filename=p.jpg\r\n\r\nfake-jpeg"
+    end
+
+    test "{:path, p} uploads the file's content, not the path", %{bypass: bypass} do
+      capture_body(bypass, "/sendDocument")
+
+      tmp = Path.join(System.tmp_dir!(), "sexy_sender_path.txt")
+      File.write!(tmp, "REAL FILE CONTENT")
+      on_exit(fn -> File.rm(tmp) end)
+
+      %Object{chat_id: 123, upload_type: :document, file: {:path, tmp}, filename: "r.txt"}
+      |> Sender.deliver(update_mid: false)
+
+      assert_received {:body, body}
+      assert body =~ "name=document; filename=r.txt"
+      assert body =~ "REAL FILE CONTENT"
+      refute body =~ tmp
+    end
+
+    # no Bypass expectation: the check runs before any request is sent
+    test "{:path, p} to a missing file fails loudly" do
+      import ExUnit.CaptureLog
+
+      object = %Object{
+        chat_id: 123,
+        upload_type: :document,
+        file: {:path, "/nonexistent/sexy.pdf"},
+        filename: "sexy.pdf"
+      }
+
+      log =
+        capture_log(fn ->
+          assert %{"ok" => false, "description" => description} =
+                   Sender.deliver(object, update_mid: false)
+
+          assert description =~ "/nonexistent/sexy.pdf"
+          assert description =~ "enoent"
+        end)
+
+      assert log =~ "Failed to send message"
+    end
+
+    test "params can't override what Sexy sets" do
+      for {object, key} <- [
+            {%Object{chat_id: 1, params: %{text: "x"}}, "text"},
+            {%Object{chat_id: 1, params: %{"reply_markup" => %{}}}, "reply_markup"},
+            {%Object{chat_id: 1, media: "AgAC", params: %{photo: "other"}}, "photo"},
+            {%Object{
+               chat_id: 1,
+               upload_type: :video,
+               file: "x",
+               filename: "v.mp4",
+               params: %{video: "y"}
+             }, "video"}
+          ] do
+        error = assert_raise ArgumentError, fn -> Sender.deliver(object) end
+        assert error.message =~ inspect([key])
+      end
+    end
+
+    test "atom and string spelling of one key raises" do
+      object = %Object{
+        chat_id: 1,
+        params: %{:protect_content => true, "protect_content" => false}
+      }
+
+      assert_raise ArgumentError, ~r/given twice/, fn -> Sender.deliver(object) end
+    end
+
+    # Value of a plain (non-file) form field in a raw multipart body.
+    defp form_field(body, name) do
+      [_, value] = Regex.run(~r/name="#{name}"\r\n(?:[^\r\n]+\r\n)*\r\n(.*?)\r\n--/s, body)
+      value
     end
   end
 

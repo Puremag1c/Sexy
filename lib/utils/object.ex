@@ -21,9 +21,30 @@ defmodule Sexy.Utils.Object do
   | `kb` | map | Reply markup (`%{inline_keyboard: [[...]]}`) |
   | `entity` | list | Telegram message entities (bold, links, etc.) |
   | `update_data` | map | App-specific data passed to `Session.on_message_sent/4` |
-  | `file` | binary/string/nil | File content (binary) or path for multipart uploads |
+  | `file` | binary/`{:path, path}`/nil | File content, or `{:path, path}` to upload a file from disk |
   | `filename` | string/nil | Filename for multipart uploads |
   | `upload_type` | atom/nil | `:photo`, `:video`, `:animation`, `:document` — forces multipart upload |
+  | `params` | map | Extra Bot API parameters merged into the request (see below) |
+
+  `build/1` raises `KeyError` on a key that is not a field — a misspelled or
+  unsupported key fails loudly instead of being dropped.
+
+  ## Extra Bot API parameters
+
+  `params` is passed through to the `send*` request as-is, for every content
+  type including multipart uploads — any Bot API parameter works without a
+  Sexy release:
+
+      Sexy.Bot.build(%{
+        chat_id: 123,
+        text: "https://example.com",
+        params: %{link_preview_options: %{is_disabled: true}, disable_notification: true}
+      })
+
+  Keys may be atoms or strings; `nil` values are not sent. Parameters Sexy
+  sets itself (`chat_id`, `text`/`caption`, `entities`/`caption_entities`,
+  `parse_mode`, `reply_markup`, the media field) cannot be overridden —
+  use the Object fields; a clash raises `ArgumentError`.
 
   ## Media type detection
 
@@ -54,9 +75,10 @@ defmodule Sexy.Utils.Object do
           kb: map(),
           entity: list(),
           update_data: map(),
-          file: binary() | nil,
+          file: binary() | {:path, String.t()} | nil,
           filename: String.t() | nil,
-          upload_type: upload_type()
+          upload_type: upload_type(),
+          params: map()
         }
 
   defstruct chat_id: nil,
@@ -67,12 +89,15 @@ defmodule Sexy.Utils.Object do
             update_data: %{},
             file: nil,
             filename: nil,
-            upload_type: nil
+            upload_type: nil,
+            params: %{}
 
   @type object_type :: String.t()
 
   @doc """
   Build an Object struct from a map, or a list of Objects from a list of maps.
+
+  Raises `KeyError` if the map has a key that is not an Object field.
 
   ## Examples
 
@@ -84,7 +109,7 @@ defmodule Sexy.Utils.Object do
   def build(items) when is_list(items), do: Enum.map(items, &build/1)
   # idempotent: an already-built Object passes through unchanged
   def build(%__MODULE__{} = object), do: object
-  def build(map) when is_map(map) and not is_struct(map), do: struct(%__MODULE__{}, map)
+  def build(map) when is_map(map) and not is_struct(map), do: struct!(__MODULE__, map)
 
   @doc """
   Detect the content type of an Object.

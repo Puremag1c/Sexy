@@ -126,50 +126,32 @@ defmodule Sexy.Bot.Api do
   @spec send_photo(String.t()) :: tg_response()
   def send_photo(body), do: do_request("sendPhoto", body)
 
-  @spec send_photo(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
-  def send_photo(chat_id, file, filename, text, reply_markup) do
-    body = [
-      {"photo", file, {"form-data", [{"name", "photo"}, {"filename", filename}]}, []},
-      {"chat_id", to_string(chat_id)},
-      {"caption", text},
-      {"reply_markup", reply_markup},
-      {"parse_mode", "HTML"}
-    ]
-
-    do_multipart("sendPhoto", body)
-  end
+  @spec send_photo(integer(), binary() | {:path, String.t()}, String.t(), String.t(), String.t()) ::
+          tg_response()
+  def send_photo(chat_id, file, filename, text, reply_markup),
+    do: upload("sendPhoto", "photo", chat_id, file, filename, text, reply_markup)
 
   @spec send_video(String.t()) :: tg_response()
   def send_video(body), do: do_request("sendVideo", body)
 
-  @spec send_video(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
-  def send_video(chat_id, file, filename, text, reply_markup) do
-    body = [
-      {"video", file, {"form-data", [{"name", "video"}, {"filename", filename}]}, []},
-      {"chat_id", to_string(chat_id)},
-      {"caption", text},
-      {"reply_markup", reply_markup},
-      {"parse_mode", "HTML"}
-    ]
-
-    do_multipart("sendVideo", body)
-  end
+  @spec send_video(integer(), binary() | {:path, String.t()}, String.t(), String.t(), String.t()) ::
+          tg_response()
+  def send_video(chat_id, file, filename, text, reply_markup),
+    do: upload("sendVideo", "video", chat_id, file, filename, text, reply_markup)
 
   @spec send_animation(String.t()) :: tg_response()
   def send_animation(body), do: do_request("sendAnimation", body)
 
-  @spec send_animation(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
-  def send_animation(chat_id, file, filename, text, reply_markup) do
-    body = [
-      {"animation", file, {"form-data", [{"name", "animation"}, {"filename", filename}]}, []},
-      {"chat_id", to_string(chat_id)},
-      {"caption", text},
-      {"reply_markup", reply_markup},
-      {"parse_mode", "HTML"}
-    ]
-
-    do_multipart("sendAnimation", body)
-  end
+  @spec send_animation(
+          integer(),
+          binary() | {:path, String.t()},
+          String.t(),
+          String.t(),
+          String.t()
+        ) ::
+          tg_response()
+  def send_animation(chat_id, file, filename, text, reply_markup),
+    do: upload("sendAnimation", "animation", chat_id, file, filename, text, reply_markup)
 
   @spec send_poll(String.t()) :: tg_response()
   def send_poll(body), do: do_request("sendPoll", body)
@@ -183,18 +165,16 @@ defmodule Sexy.Bot.Api do
     |> then(&do_request("copyMessage", &1))
   end
 
-  @spec send_document(integer(), binary(), String.t(), String.t(), String.t()) :: tg_response()
-  def send_document(chat_id, file, filename, text, reply_markup) do
-    body = [
-      {"document", file, {"form-data", [{"name", "document"}, {"filename", filename}]}, []},
-      {"chat_id", to_string(chat_id)},
-      {"caption", text},
-      {"reply_markup", reply_markup},
-      {"parse_mode", "HTML"}
-    ]
-
-    do_multipart("sendDocument", body)
-  end
+  @spec send_document(
+          integer(),
+          binary() | {:path, String.t()},
+          String.t(),
+          String.t(),
+          String.t()
+        ) ::
+          tg_response()
+  def send_document(chat_id, file, filename, text, reply_markup),
+    do: upload("sendDocument", "document", chat_id, file, filename, text, reply_markup)
 
   @doc ~S"""
   Send a dice animation. `emoji` is one of Telegram's dice emoji:
@@ -378,4 +358,65 @@ defmodule Sexy.Bot.Api do
 
   @spec request(String.t(), String.t()) :: tg_response()
   def request(body, method), do: do_request(method, body)
+
+  @doc """
+  Multipart counterpart of `request/2`: upload `file` as form field `field`,
+  with `fields` as the other parameters. `file` is the content (binary) or
+  `{:path, path}` to stream a file from disk (a missing or unreadable file
+  returns `%{"ok" => false, ...}` without touching the network). Strings are sent as-is, maps/lists JSON-encoded (as
+  Telegram expects for `reply_markup`, `caption_entities`, etc.), other
+  scalars via `to_string/1`.
+
+      Sexy.Bot.Api.request_multipart("sendPhoto", {"photo", jpeg, "p.jpg"}, %{chat_id: 123})
+      Sexy.Bot.Api.request_multipart("sendDocument", {"document", {:path, "/tmp/r.pdf"}, "r.pdf"}, %{chat_id: 123})
+  """
+  @spec request_multipart(
+          String.t(),
+          {String.t(), binary() | {:path, String.t()}, String.t()},
+          map()
+        ) :: tg_response()
+  def request_multipart(method, {field, file, filename}, fields) do
+    disposition = {"form-data", [{"name", field}, {"filename", filename}]}
+    parts = Enum.map(fields, fn {k, v} -> {to_string(k), form_value(v)} end)
+
+    case check_readable(file) do
+      :ok ->
+        do_multipart(method, [file_part(field, file, disposition) | parts])
+
+      {:error, reason} ->
+        %{
+          "ok" => false,
+          "description" => "file not readable: #{elem(file, 1)} (#{inspect(reason)})"
+        }
+    end
+  end
+
+  # Checked before connecting: hackney only opens the file mid-request, so a
+  # missing one would leave a half-sent request on the wire.
+  defp check_readable({:path, path}) do
+    case File.stat(path) do
+      {:ok, %{type: :regular, access: access}} when access in [:read, :read_write] -> :ok
+      {:ok, %{type: :regular}} -> {:error, :eacces}
+      {:ok, %{type: type}} -> {:error, {:not_a_file, type}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp check_readable(_content), do: :ok
+
+  # Legacy positional upload helpers (send_photo/5 & co.): HTML caption,
+  # pre-encoded reply_markup.
+  defp upload(method, field, chat_id, file, filename, text, reply_markup) do
+    fields = %{chat_id: chat_id, caption: text, reply_markup: reply_markup, parse_mode: "HTML"}
+    request_multipart(method, {field, file, filename}, fields)
+  end
+
+  defp file_part(_field, {:path, path}, disposition), do: {:file, path, disposition, []}
+
+  defp file_part(field, content, disposition) when is_binary(content),
+    do: {field, content, disposition, []}
+
+  defp form_value(v) when is_binary(v), do: v
+  defp form_value(v) when is_map(v) or is_list(v), do: Jason.encode!(v)
+  defp form_value(v), do: to_string(v)
 end

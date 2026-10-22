@@ -328,7 +328,7 @@ The `media` field controls which Telegram API method is called:
 
 # Photo / video / animation upload (multipart)
 %{chat_id: id, text: "Look", upload_type: :photo, file: File.read!("p.jpg"), filename: "p.jpg"}
-%{chat_id: id, text: "Clip", upload_type: :video, file: "/tmp/clip.mp4", filename: "clip.mp4"}
+%{chat_id: id, text: "Clip", upload_type: :video, file: {:path, "/tmp/clip.mp4"}, filename: "clip.mp4"}
 ```
 
 ### Inline keyboard

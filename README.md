@@ -189,9 +189,12 @@ Sexy.Bot.build(%{chat_id: 123, text: "Hello!"})
 | `kb` | map | `%{inline_keyboard: []}` | Telegram reply markup |
 | `entity` | list | `[]` | Telegram entities (bold, links, etc.). When non-empty, `parse_mode` is omitted |
 | `update_data` | map | `%{}` | App-specific data passed to `Session.on_message_sent/4` |
-| `file` | binary/string/nil | `nil` | File content (binary) or path for multipart uploads |
+| `file` | binary/`{:path, path}`/nil | `nil` | File content, or `{:path, path}` to upload a file from disk. A plain string is content, not a path |
 | `filename` | string/nil | `nil` | Filename for multipart uploads |
 | `upload_type` | atom/nil | `nil` | `:photo`, `:video`, `:animation`, `:document` — forces multipart upload |
+| `params` | map | `%{}` | Extra Bot API parameters merged into the `send*` request (any content type) |
+
+`build/1` raises `KeyError` on a key that is not a field — nothing is dropped silently.
 
 **Content type detection** — `upload_type` wins, otherwise falls back to `media`:
 
@@ -218,10 +221,14 @@ Telegram file_ids have predictable prefixes by type — Sexy uses this for auto-
 # Photo by file_id
 %{chat_id: id, text: "Nice photo", media: "AgACAgIAAxk..."}
 
-# Upload from binary or path
+# Upload from binary or from disk
 %{chat_id: id, text: "Your report", upload_type: :document, file: csv_binary, filename: "report.csv"}
 %{chat_id: id, text: "Look", upload_type: :photo, file: File.read!("p.jpg"), filename: "p.jpg"}
-%{chat_id: id, text: "Clip", upload_type: :video, file: "/tmp/clip.mp4", filename: "clip.mp4"}
+%{chat_id: id, text: "Clip", upload_type: :video, file: {:path, "/tmp/clip.mp4"}, filename: "clip.mp4"}
+
+# Any other Bot API parameter
+%{chat_id: id, text: "https://example.com", params: %{link_preview_options: %{is_disabled: true}}}
+%{chat_id: id, text: "Quiet", params: %{disable_notification: true, protect_content: true}}
 
 # Pass state to on_message_sent
 %{chat_id: id, text: "Cart", update_data: %{screen: "cart", page: 1}}

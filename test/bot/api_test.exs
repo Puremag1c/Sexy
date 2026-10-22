@@ -63,14 +63,29 @@ defmodule Sexy.Bot.ApiTest do
 
       on_exit(fn -> File.rm(tmp) end)
 
+      test_pid = self()
+
       Bypass.expect_once(bypass, "POST", "/sendDocument", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test_pid, {:body, body})
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 3}}))
       end)
 
-      result = Api.send_document(123, tmp, "test.pdf", "caption", "{}")
+      result =
+        Api.send_document(123, {:path, tmp}, "test.pdf", "caption", ~s({"inline_keyboard":[]}))
+
       assert result["ok"] == true
+
+      assert_received {:body, body}
+      # the file's content goes out, not its path
+      assert body =~ "test file content"
+      refute body =~ tmp
+      # positional helpers keep their contract: HTML caption, reply_markup as given
+      assert body =~ ~s(name="parse_mode"\r\n\r\nHTML\r\n)
+      assert body =~ ~s(name="reply_markup"\r\n\r\n{"inline_keyboard":[]}\r\n)
     end
   end
 
@@ -88,7 +103,7 @@ defmodule Sexy.Bot.ApiTest do
         |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 11}}))
       end)
 
-      result = Api.send_photo(123, tmp, "pic.jpg", "caption", "{}")
+      result = Api.send_photo(123, {:path, tmp}, "pic.jpg", "caption", "{}")
       assert result["ok"] == true
       assert result["result"]["message_id"] == 11
     end
@@ -108,7 +123,7 @@ defmodule Sexy.Bot.ApiTest do
         |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 12}}))
       end)
 
-      result = Api.send_video(123, tmp, "clip.mp4", "caption", "{}")
+      result = Api.send_video(123, {:path, tmp}, "clip.mp4", "caption", "{}")
       assert result["ok"] == true
       assert result["result"]["message_id"] == 12
     end
@@ -128,7 +143,7 @@ defmodule Sexy.Bot.ApiTest do
         |> Plug.Conn.resp(200, Jason.encode!(%{"ok" => true, "result" => %{"message_id" => 13}}))
       end)
 
-      result = Api.send_animation(123, tmp, "wave.gif", "caption", "{}")
+      result = Api.send_animation(123, {:path, tmp}, "wave.gif", "caption", "{}")
       assert result["ok"] == true
       assert result["result"]["message_id"] == 13
     end

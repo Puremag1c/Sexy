@@ -126,6 +126,14 @@ defmodule Sexy.TDLTest do
     assert :ok = TDL.close("t6")
   end
 
+  test "Registry.update/2 raises on an unknown field instead of dropping it" do
+    Registry.set("r1", %Registry{app_pid: self()})
+
+    assert_raise KeyError, fn -> Registry.update("r1", tdlib_pidd: 1) end
+    assert Registry.update("r1", tdlib_pid: 1)
+    assert Registry.get("r1", :tdlib_pid) == 1
+  end
+
   test "nested keyboard rows (vector<vector>) deserialize to structs" do
     # no cleanup needed: the ETS table dies with the supervised tree
     Registry.set("h1", %Registry{app_pid: self()})

@@ -7,8 +7,8 @@ defmodule Sexy.Bot.Sender do
   ## How it works
 
   1. Detects content type via `Sexy.Utils.Object.detect_object_type/1`
-  2. Calls the appropriate `Sexy.Bot.Api` method (`send_message`, `send_photo`,
-     `send_document`, etc.)
+  2. Builds the request body, merges `Object.params` into it, and calls
+     `Sexy.Bot.Api` (`send_message`, `request`, `request_multipart`)
   3. If `update_mid: true` (default):
      - Deletes the old message via `Session.get_message_id/1`
      - Saves the new message id via `Session.on_message_sent/4`
@@ -95,61 +95,67 @@ defmodule Sexy.Bot.Sender do
       parse_mode: parse,
       reply_markup: object.kb
     }
+    |> with_params(object.params)
     |> Jason.encode!()
     |> Api.send_message()
   end
 
-  defp send_by_type("file", object, _parse, _text) do
-    Api.send_document(
-      object.chat_id,
-      object.file,
-      object.filename,
-      object.text,
-      Jason.encode!(object.kb)
-    )
-  end
+  defp send_by_type(objtype, object, parse, text)
+       when objtype in ["file", "photo_upload", "video_upload", "animation_upload"] do
+    {method, field} = upload_target(objtype)
 
-  defp send_by_type("photo_upload", object, _parse, _text) do
-    Api.send_photo(
-      object.chat_id,
-      object.file,
-      object.filename,
-      object.text,
-      Jason.encode!(object.kb)
-    )
-  end
-
-  defp send_by_type("video_upload", object, _parse, _text) do
-    Api.send_video(
-      object.chat_id,
-      object.file,
-      object.filename,
-      object.text,
-      Jason.encode!(object.kb)
-    )
-  end
-
-  defp send_by_type("animation_upload", object, _parse, _text) do
-    Api.send_animation(
-      object.chat_id,
-      object.file,
-      object.filename,
-      object.text,
-      Jason.encode!(object.kb)
-    )
+    object
+    |> caption_body(parse, text)
+    |> with_params(object.params, [field])
+    |> then(&Api.request_multipart(method, {field, object.file, object.filename}, &1))
   end
 
   defp send_by_type(objtype, object, parse, text) do
-    %{
-      objtype => object.media,
-      chat_id: object.chat_id,
-      caption_entities: object.entity,
-      parse_mode: parse,
-      caption: text,
-      reply_markup: object.kb
-    }
+    object
+    |> caption_body(parse, text)
+    |> Map.put(objtype, object.media)
+    |> with_params(object.params)
     |> Jason.encode!()
     |> Api.request("send" <> String.capitalize(objtype))
+  end
+
+  defp upload_target("file"), do: {"sendDocument", "document"}
+  defp upload_target("photo_upload"), do: {"sendPhoto", "photo"}
+  defp upload_target("video_upload"), do: {"sendVideo", "video"}
+  defp upload_target("animation_upload"), do: {"sendAnimation", "animation"}
+
+  defp caption_body(object, parse, text) do
+    %{
+      chat_id: object.chat_id,
+      caption: text,
+      caption_entities: object.entity,
+      parse_mode: parse,
+      reply_markup: object.kb
+    }
+  end
+
+  # Merge Object.params into the request body. Keys Sexy sets (the body's own
+  # keys + `reserved`, e.g. the upload's file field) can't be overridden, and
+  # an atom/string pair naming the same key is ambiguous — both raise.
+  defp with_params(body, params, reserved \\ []) do
+    body = Map.new(body, fn {k, v} -> {to_string(k), v} end)
+    extra = for {k, v} <- params, v != nil, do: {to_string(k), v}
+    keys = Enum.map(extra, &elem(&1, 0))
+
+    dups = keys -- Enum.uniq(keys)
+    clash = Enum.filter(keys, &(Map.has_key?(body, &1) or &1 in reserved))
+
+    cond do
+      dups != [] ->
+        raise ArgumentError, "Sexy.Bot.Sender | params key given twice: #{inspect(dups)}"
+
+      clash != [] ->
+        raise ArgumentError,
+              "Sexy.Bot.Sender | params can't override #{inspect(clash)} — use the Object fields"
+
+      true ->
+        Map.merge(body, Map.new(extra))
+    end
   end
 
   defp update_screen(objtype, object, message) do

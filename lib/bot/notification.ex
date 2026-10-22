@@ -50,7 +50,7 @@ defmodule Sexy.Bot.Notification do
   @doc """
   Send a notification to a chat.
 
-  `message` is a map like `%{text: "..."}` or `%{upload_type: :document, file: "...", filename: "..."}`
+  `message` is a map like `%{text: "..."}` or `%{upload_type: :document, file: {:path, "..."}, filename: "..."}`
   (also supports `:photo`, `:video`, `:animation`).
 
   Options:

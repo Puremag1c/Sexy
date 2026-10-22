@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.12.0
+
+`Sexy.Bot`: any Bot API send parameter via `Object.params`; unknown Object keys fail loudly; uploads from disk via `file: {:path, path}`.
+See [UPGRADING.md](UPGRADING.md).
+
+### Added
+
+- `Sexy.Utils.Object` field `params` (default `%{}`): extra Bot API parameters merged into the `send*` request for every content type, multipart uploads included — e.g. `params: %{link_preview_options: %{is_disabled: true}}`, `disable_notification`, `protect_content`, `reply_parameters`, `message_thread_id`, `has_spoiler`. New Telegram parameters work without a Sexy release. Keys may be atoms or strings; `nil` values are not sent. A key Sexy sets itself (`chat_id`, `text`/`caption`, `entities`/`caption_entities`, `parse_mode`, `reply_markup`, the media field) or the same key spelled as both atom and string raises `ArgumentError`.
+- `Sexy.Bot.Api.request_multipart/3` — multipart counterpart of `request/2`.
+
+### Changed
+
+- **Breaking:** `Sexy.Bot.build/1` (and `notify/3`, which builds through it) raises `KeyError` on a key that is not an Object field. Such keys were silently dropped by `struct/2`, so a misspelled or unsupported option was never sent.
+- `Sexy.TDL.Registry.update/2` raises `KeyError` in the caller on an unknown field (same silent `struct/2` drop).
+
+### Fixed
+
+- Multipart uploads (`upload_type: :photo | :video | :animation | :document`) dropped `entity` and always sent `parse_mode: "HTML"`: entity-formatted captions lost their formatting. Uploads now send `caption_entities` and the same `parse_mode` rule as every other send.
+- **Breaking:** uploading by path never worked — `file: "/some/path"` sent the path text as the file content (docs promised a path). Pass `file: {:path, path}` to upload from disk; `file:` as a binary is the content. A missing or unreadable file returns `%{"ok" => false, ...}` (logged) before any request is sent. The positional `send_photo/5`, `send_video/5`, `send_animation/5`, `send_document/5` accept `{:path, path}` too (their docs promised a path the same way).
+- Dialyzer CI red since 0.11.1 (`tdlib_pid/1 will never be called`). `Sexy.TDL.Backend` opened ports with bare `:line`, which works at runtime (512-byte chunks) but is outside OTP's `open_port` spec, so dialyzer treated every `{:ok, port}` branch as dead. Now `{:line, 512}` — identical runtime behavior — and the file-wide `.dialyzer_ignore.exs` that hid the same false positive since 0.10.1 is removed, so new warnings in `backend.ex` are no longer masked.
+
 ## 0.11.1
 
 Proxy config comes from the caller; the session registry carries the real OS pids.

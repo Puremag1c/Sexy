@@ -78,6 +78,9 @@ defmodule Sexy.TDL.Registry do
 
   @spec update(String.t(), keyword() | map()) :: true | false
   def update(session_name, change) do
+    # Checked in the caller: struct/2 in the server would silently drop a
+    # misspelled key (and raising there would crash the shared Registry).
+    _ = struct!(__MODULE__, change)
     GenServer.call(@name, {:update, session_name, change})
   end
 
